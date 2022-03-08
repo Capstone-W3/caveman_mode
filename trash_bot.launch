@@ -193,5 +193,4 @@
     <param name="config_path"           value="$(arg yolo_config_path)" />
     <remap from="camera/rgb/image_raw"  to="$(arg image)" />
   </node>
-
 </launch>

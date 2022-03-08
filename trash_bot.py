@@ -20,20 +20,23 @@ class TrashBot():
         self.angular_speed = 0.3 # radians/s
 
     def TrashDetected(self, trash_data):
-        print("Deteceted Trash in TrashBot.TrashDetected()")
-        print(type(trash_data))
+        print("Deteceted Trash!")
+        # print(type(trash_data))
 
         # isolate the closest piece of trash
         closest_piece = trash_data[0]
 
-        # we define closest as the one with the lowest average Y value in
-        # the frame
+        # we define closest as the one with the highest upper bound y value in
+        # the frame, since down is positive and bottom right is (640,480)
         if len(trash_data) > 1:
-            min_y = self.trash_detector.frame_height + 1
+            max_y = 0
             for piece in trash_data:
-                if piece.y_bounds[0] < min_y and piece.confidence > 0.6:
+                if piece.y_bounds[1] > max_y and piece.confidence > 0.6:
                     min_y = piece.y_bounds[0]
                     closest_piece = piece
+
+        print('closest piece is at (%i, %i)' % (closest_piece.x, closest_piece.y))
+
 
         # if we aren't confident, stop the turtlebot and do nothing
         if closest_piece.confidence < 0.6:
@@ -66,7 +69,7 @@ class TrashBot():
         else:
             # firstly, stop rotating
             print('attempting to attack da trash')
-            self.stop()
+            self.kobuki_base.stop()
 
             # secondly, start the motor
             #self.collection_mechanism.StartMotor()

@@ -39,8 +39,8 @@ class TrashYoloSubscriber():
         self.count = data.count
 
     def DarknetBoundingBoxesReceivedEvent(self, data):
-        print('got a bounding box for trash')
-        print(data)
+        # print('got a bounding box for trash')
+        # print(data)
         # clear the trash list
         self.trash = []
 
@@ -48,7 +48,7 @@ class TrashYoloSubscriber():
         for bounding_box in data.bounding_boxes:
             self.trash.append(TrashPiece(bounding_box))
 
-        print('trash count: %i' % len(self.trash))
+        # print('trash count: %i' % len(self.trash))
 
         if self.TrashSpottedCallbackFunction != None:
             self.TrashSpottedCallbackFunction(self.trash)
