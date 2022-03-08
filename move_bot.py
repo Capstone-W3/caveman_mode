@@ -43,7 +43,7 @@ SUBSCRIBED TOPICS:
 class TurtlebotControl():
     # Initialize ROS Node
     def __init__(self):
-        rospy.init_node('TurtlebotControl')
+        #rospy.init_node('TurtlebotControl')
 
         # PUBLISHERS
         self.cmd_vel = rospy.Publisher('cmd_vel_mux/input/navi', Twist, queue_size=10)
