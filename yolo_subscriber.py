@@ -42,11 +42,13 @@ class TrashYoloSubscriber():
         print('got a bounding box for trash')
         print(data)
         # clear the trash list
-        self.trash *= 0
+        self.trash = []
 
         # Add all trash to the list of currently spotted trash
-        for bounding_box in data:
-            self.trash.append(TrashPiece(data))
+        for bounding_box in data.bounding_boxes:
+            self.trash.append(TrashPiece(bounding_box))
+
+        print('trash count: %i' % len(self.trash))
 
         if self.TrashSpottedCallbackFunction != None:
             self.TrashSpottedCallbackFunction(self.trash)
@@ -58,8 +60,8 @@ class TrashPiece():
         self.confidence = bounding_box.probability
 
         # Bounding box coordinates
-        self.x_bounds = (bounding_box.x_min, bounding_box.x_max)
-        self.y_bounds = (bounding_box.y_min, bounding_box.y_max)
+        self.x_bounds = (bounding_box.xmin, bounding_box.xmax)
+        self.y_bounds = (bounding_box.ymin, bounding_box.ymax)
         
         # Centered coordinates
         self.x = self.x_bounds[1] - ((self.x_bounds[1] - self.x_bounds[0]) / 2)

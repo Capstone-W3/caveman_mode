@@ -43,7 +43,7 @@ SUBSCRIBED TOPICS:
 class TurtlebotControl():
     # Initialize ROS Node
     def __init__(self):
-        #rospy.init_node('TurtlebotControl')
+        rospy.init_node('TurtlebotControl')
 
         # PUBLISHERS
         self.cmd_vel = rospy.Publisher('cmd_vel_mux/input/navi', Twist, queue_size=10)
@@ -199,6 +199,7 @@ class TurtlebotControl():
         self.stop()
 
     def rotate(self, speed = 0.25):
+        print('attempting to rotate')
         turn_cmd = Twist()
         turn_cmd.angular.z = speed
         self.cmd_vel.publish(turn_cmd)

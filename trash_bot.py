@@ -21,13 +21,14 @@ class TrashBot():
 
     def TrashDetected(self, trash_data):
         print("Deteceted Trash in TrashBot.TrashDetected()")
+        print(type(trash_data))
 
         # isolate the closest piece of trash
         closest_piece = trash_data[0]
 
         # we define closest as the one with the lowest average Y value in
         # the frame
-        if len(trash_data > 1):
+        if len(trash_data) > 1:
             min_y = self.trash_detector.frame_height + 1
             for piece in trash_data:
                 if piece.y_bounds[0] < min_y and piece.confidence > 0.6:
@@ -37,6 +38,7 @@ class TrashBot():
         # if we aren't confident, stop the turtlebot and do nothing
         if closest_piece.confidence < 0.6:
             self.kobuki_base.stop()
+            print('unconfident, not moving')
             return
 
         # Now that we've isolated the closest piece, lets figure out which
@@ -53,24 +55,27 @@ class TrashBot():
         # if trash left:
         if closest_piece.x <= window_left:
             # turn left
+            print('attempting to turn left')
             self.kobuki_base.rotate(self.angular_speed)
         # elif trash right:
         elif closest_piece.x >= window_right:
             # turn right
+            print('attempting to turn right')
             self.kobuki_base.rotate(-1 * self.angular_speed)
         # else IT MUST BE IN MIDDLE
         else:
             # firstly, stop rotating
+            print('attempting to attack da trash')
             self.stop()
 
             # secondly, start the motor
-            self.collection_mechanism.StartMotor()
+            #self.collection_mechanism.StartMotor()
 
             # thirdly, move forward one meter
-            self.move_forward(1, self.linear_speed)
+            #self.move_forward(1, self.linear_speed)
 
             # fourthly, turn off the collection mechanism
-            self.collection_mechanism.StopMotor()
+            #self.collection_mechanism.StopMotor()
 
 
 
