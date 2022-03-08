@@ -1,6 +1,6 @@
 # trash_bot is the top level representation of our turtlebot
 
-from move_bot import *
+from kobuki_base import *
 from yolo_subscriber import *
 from serial_motor import *
 import threading
@@ -11,7 +11,7 @@ class TrashBot():
         rospy.init_node('trash_bot')
 
         self.trash_detector = TrashYoloSubscriber(self.TrashDetected)
-        self.kobuki_base = TurtlebotControl()
+        self.kobuki_base = KobukiBase()
         self.collection_mechanism = SerialMotor()
         # self.collection_mechanism.Connect()
         
@@ -59,11 +59,13 @@ class TrashBot():
         if closest_piece.x <= window_left:
             # turn left
             print('attempting to turn left')
+            self.kobuki_base.stop()
             self.kobuki_base.spin_async(self.angular_speed)
         # elif trash right:
         elif closest_piece.x >= window_right:
             # turn right
             print('attempting to turn right')
+            self.kobuki_base.stop()
             self.kobuki_base.spin_async(-1 * self.angular_speed)
         # else IT MUST BE IN MIDDLE
         else:
