@@ -3,8 +3,8 @@
 from move_bot import *
 from yolo_subscriber import *
 from serial_motor import *
-
-
+import threading
+import time
 
 class TrashBot():
     def __init__(self):
@@ -56,12 +56,12 @@ class TrashBot():
         if closest_piece.x <= window_left:
             # turn left
             print('attempting to turn left')
-            self.kobuki_base.rotate(self.angular_speed)
+            self.kobuki_base.spin_async(self.angular_speed)
         # elif trash right:
         elif closest_piece.x >= window_right:
             # turn right
             print('attempting to turn right')
-            self.kobuki_base.rotate(-1 * self.angular_speed)
+            self.kobuki_base.spin_async(-1 * self.angular_speed)
         # else IT MUST BE IN MIDDLE
         else:
             # firstly, stop rotating

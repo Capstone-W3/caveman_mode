@@ -13,7 +13,8 @@ from geometry_msgs.msg import *
 from nav_msgs.msg import *
 from sensor_msgs.msg import *
 from std_msgs.msg import *
-
+import threading
+import time
 
 def plus_or_minus(num, bound, compare):
     return compare >= num - bound and compare <= num + bound
@@ -42,8 +43,9 @@ SUBSCRIBED TOPICS:
 '''
 class TurtlebotControl():
     # Initialize ROS Node
-    def __init__(self):
-        rospy.init_node('TurtlebotControl')
+    def __init__(self, init_node = False):
+        if init_node:
+            rospy.init_node('TurtlebotControl')
 
         # PUBLISHERS
         self.cmd_vel = rospy.Publisher('cmd_vel_mux/input/navi', Twist, queue_size=10)
@@ -86,14 +88,14 @@ class TurtlebotControl():
         print("Start: (%.3f,%.3f) Target: (%.3f,%.3f)" % (x_start, y_start, x_dest, y_dest))
         print("delta_y: %.3f delta_x: %.3f" % (delta_y, delta_x))
 
-        print "Side Ratio: ",
-        print(delta_y / delta_x)
+#        print "Side Ratio: ",
+#        print(delta_y / delta_x)
 
         theta_radians = math.atan(delta_y / delta_x)
 
 
-        print 'theta_radians: ',
-        print(theta_radians)
+#        print 'theta_radians: ',
+#        print(theta_radians)
 
         if (delta_x < 0):
             if (delta_y > 0):
@@ -110,15 +112,15 @@ class TurtlebotControl():
             else:
                 theta_radians = 0
 
-        print 'theta_radians (adjusted): '
-        print(theta_radians)
+#        print 'theta_radians (adjusted): '
+#        print(theta_radians)
             
             
 
         theta_quaternary = theta_radians / math.pi
         
-        print 'theta_quaternary: ',
-        print(theta_quaternary)
+        #print 'theta_quaternary: ',
+        #print(theta_quaternary)
 
         self.turn_to_angle(theta_quaternary)
         
@@ -203,9 +205,39 @@ class TurtlebotControl():
         turn_cmd = Twist()
         turn_cmd.angular.z = speed
         self.cmd_vel.publish(turn_cmd)
+    
+
+    # call this function to spawn a new thread which will constantly
+    # spin the turtlebot at the specified speed until self.stop()
+    # is called from any other thread
+    def spin_async(self, speed = 0.3):
+        # spins endlessly, if called async
+        def spin(speed):
+            self.moving = True
+            print('attempting to spin asyncrounously')
+            
+            polling_rate = 10 #Hz
+            r = rospy.Rate(polling_rate)
+            
+            turn_cmd = Twist()
+            turn_cmd.angular.z = speed
+            self.moving = True
+            while self.moving:
+                self.cmd_vel.publish(turn_cmd)
+                r.sleep()
+
+            print('stopping spinning')
+
+
+        spin_thread = threading.Thread(target = spin, args=(speed,))
+        print('starting spinning thread')
+        spin_thread.start()
+
+
 
     def stop(self):
         stop_cmd = Twist()
+        self.moving = False
         self.cmd_vel.publish(stop_cmd)
     
     
@@ -225,22 +257,10 @@ point_2 = Pose(Point(-1, 0.0, 0.0), Quaternion(0.0, 0.0, 0.0, 1.0))
 
  
 if __name__ == '__main__':
-    turtlebot = TurtlebotControl()
+    turtlebot = TurtlebotControl(init_node = True)
     turtlebot.reset_odometry()
-    #turtlebot.move_forward(1)
-    # turtlebot.rotate_radians(3.141592566758)
-    #turtlebot.turn_to_angle(1.00)
-    #rospy.sleep(2)
-    #turtlebot.move_to_pose(point_1)
-    #rospy.sleep(2)
-    #turtlebot.move_to_pose(point_2)
-    rospy.sleep(1)
-    turtlebot.turn_to_angle(0, 0.3)
-    rospy.sleep(5)
-    turtlebot.move_forward(1)
-    rospy.sleep(5)
-    turtlebot.turn_to_angle(1, 0.3)
-    rospy.sleep(5)
-    turtlebot.move_forward(1)
-    rospy.sleep(5)
-    turtlebot.turn_to_angle(0,0.3)
+    turtlebot.spin_async(0.3)
+    print('sleeping')
+    time.sleep(3)
+    print('slept')
+    turtlebot.stop()
