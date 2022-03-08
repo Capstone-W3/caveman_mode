@@ -43,7 +43,7 @@ SUBSCRIBED TOPICS:
 class TurtlebotControl():
     # Initialize ROS Node
     def __init__(self):
-        rospy.init_node('TurtleBotControl')
+        rospy.init_node('TurtlebotControl')
 
         # PUBLISHERS
         self.cmd_vel = rospy.Publisher('cmd_vel_mux/input/navi', Twist, queue_size=10)
@@ -60,7 +60,9 @@ class TurtlebotControl():
 
     def ImuDataReceivedEvent(self, data):
         self.imu = data
-
+        # print "IMU Z: ",
+        # print self.imu.orientation.z
+    
     def reset_odometry(self):
         self.cmd_reset_odometry.publish(Empty())
 
@@ -83,8 +85,6 @@ class TurtlebotControl():
 
         print("Start: (%.3f,%.3f) Target: (%.3f,%.3f)" % (x_start, y_start, x_dest, y_dest))
         print("delta_y: %.3f delta_x: %.3f" % (delta_y, delta_x))
-
-
 
         print "Side Ratio: ",
         print(delta_y / delta_x)
@@ -125,23 +125,19 @@ class TurtlebotControl():
 
 
     # Turns turtlebot to face a specified angle, which is Quaternion.z
-    # Quaternion .z is in units of pi*radians, ie to rotate 360 deg, add 2
-    def turn_to_angle(self, z, speed = 0.5):
+    # range is [-1,1] in units of pi*radians, so [-pi,pi]
+    def turn_to_angle(self, z, speed = 0.25):
         
         polling_rate = 10 #Hz
         r = rospy.Rate(polling_rate)
 
-        turn_cmd = Twist()
-        turn_cmd.angular.z = speed
-
-
         print("Speed: %.3f Radians/s" % (speed))
-        print("Start Z: %.3f Target Z: %.3f" % (self.pose_with_covariance.pose.orientation.z, z))
+        print("Start Z: %.3f Target Z: %.3f" % (self.imu.orientation.z, z))
 
 
-        while not plus_or_minus(z, 0.01, self.pose_with_covariance.pose.orientation.z):
-            self.cmd_vel.publish(turn_cmd)
-            #print("Current Z: %.3f" % (self.pose_with_covariance.pose.orientation.z))
+        while not plus_or_minus(z, 0.01, self.imu.orientation.z):
+            self.rotate(speed)
+            # print("Current Z: %.3f" % (self.pose_with_covariance.pose.orientation.z))
             r.sleep()
 
         
@@ -150,7 +146,7 @@ class TurtlebotControl():
 
 
     # Move forward `distance` meters at `speed` m/s
-    def move_forward(self, distance, speed = 0.2):
+    def move_forward(self, distance, speed = 0.3):
         time = abs(distance) / abs(speed);
         polling_rate = 10.0 #Hz
         # send commands at 10Hz
@@ -182,14 +178,13 @@ class TurtlebotControl():
         self.stop()
 
     # rotate a set number of radians relative to current orientation
-    def rotate_radians(self, radians, speed = 0.5):
+    def rotate_radians(self, radians, speed = 0.25):
         polling_rate = 10 #Hz
         r = rospy.Rate(polling_rate)
 
-        turn_cmd = Twist()
-        turn_cmd.angular.z = speed
-
         time = abs(radians) / abs(speed)
+
+        normalized_radians = radians / math.pi
 
         print("Speed: %.3f Radians/s" % (speed))
         print("Distance: %.3f Radians" % (radians))
@@ -197,12 +192,16 @@ class TurtlebotControl():
         time_run = 0.0
 
         while time_run < time:
-            self.cmd_vel.publish(turn_cmd) 
+            self.rotate(speed)
             time_run += (1.0 / polling_rate)
             r.sleep()
 
         self.stop()
 
+    def rotate(self, speed = 0.25):
+        turn_cmd = Twist()
+        turn_cmd.angular.z = speed
+        self.cmd_vel.publish(turn_cmd)
 
     def stop(self):
         stop_cmd = Twist()
@@ -230,8 +229,17 @@ if __name__ == '__main__':
     #turtlebot.move_forward(1)
     # turtlebot.rotate_radians(3.141592566758)
     #turtlebot.turn_to_angle(1.00)
-    rospy.sleep(2)
-    turtlebot.move_to_pose(point_1)
-    rospy.sleep(2)
-    turtlebot.move_to_pose(point_2)
-
+    #rospy.sleep(2)
+    #turtlebot.move_to_pose(point_1)
+    #rospy.sleep(2)
+    #turtlebot.move_to_pose(point_2)
+    rospy.sleep(1)
+    turtlebot.turn_to_angle(0, 0.3)
+    rospy.sleep(5)
+    turtlebot.move_forward(1)
+    rospy.sleep(5)
+    turtlebot.turn_to_angle(1, 0.3)
+    rospy.sleep(5)
+    turtlebot.move_forward(1)
+    rospy.sleep(5)
+    turtlebot.turn_to_angle(0,0.3)
