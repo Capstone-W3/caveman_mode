@@ -3,6 +3,7 @@
 from kobuki_base import *
 from yolo_subscriber import *
 from serial_motor import *
+from angle_calculator import *
 import threading
 import time
 
@@ -20,6 +21,9 @@ class TrashBot():
         self.angular_speed = 0.3 # radians/s
 
         self.locked_on = threading.Lock()
+        
+        self.confidence_threshold = 0.6
+
 
     def TrashDetected(self, trash_data):
         print("Detected Trash!")
@@ -33,7 +37,7 @@ class TrashBot():
         if len(trash_data) > 1:
             max_y = 0
             for piece in trash_data:
-                if piece.y_bounds[1] > max_y and piece.confidence > 0.80:
+                if piece.y_bounds[1] > max_y and piece.confidence > self.confidence_threshold:
                     min_y = piece.y_bounds[0]
                     closest_piece = piece
 
@@ -41,7 +45,7 @@ class TrashBot():
 
 
         # if we aren't confident, stop the turtlebot and do nothing
-        if closest_piece.confidence < 0.80:
+        if closest_piece.confidence < self.confidence_threshold:
             self.kobuki_base.stop()
             print('unconfident, not moving')
             return
@@ -79,7 +83,7 @@ class TrashBot():
                 smallest_difference = time_difference
                 continue
             else:
-                if difference < smallest_difference:
+                if time_difference < smallest_difference:
                     closest_stamp = timestamp
                     closest_pose = pose
                     smallest_difference = time_difference

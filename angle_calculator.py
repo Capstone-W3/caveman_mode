@@ -41,7 +41,7 @@ def find_destination_z(pixel_x, reference_z):
 
         return theta_kobuki
 
-    angle_to_move = angle_to_turn(pixel_z)
+    angle_to_move = angle_to_turn(pixel_x)
 
     destination_z = reference_z + angle_to_move
 
@@ -52,6 +52,10 @@ def find_destination_z(pixel_x, reference_z):
         final_destination = destination_z - 2
     elif (destination_z < -1):
         final_destination = destination_z + 2
+    else:
+        final_destination = destination_z
+
+    return final_destination
 
 if __name__ == '__main__':
     xs = [i for i in range(frame_width)]
