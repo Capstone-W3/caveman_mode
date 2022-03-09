@@ -19,7 +19,7 @@ class TrashBot():
         # note: angular velocity direction is positive => counter clockwise
         self.angular_speed = 0.3 # radians/s
 
-        self.locked_on = Lock()
+        self.locked_on = threading.Lock()
 
     def TrashDetected(self, trash_data):
         print("Detected Trash!")
@@ -49,7 +49,7 @@ class TrashBot():
 
         # If we aren't locked on, acquire the lock so two trash pieces aren't
         # locked onto simultaneously
-        if !self.locked_on.Locked():
+        if not self.locked_on.locked():
             self.locked_on.acquire()
         else:
             return
@@ -59,17 +59,20 @@ class TrashBot():
 
         # do this by getting the timestamp of the yolo image and find the closest odometry frame
         # with that type
-        yolo_stamp = trash_data.timestamp
+        yolo_stamp = trash_data[0].timestamp
 
         closest_pose = None
-        closest_time = timestamp
+        closest_stamp = None
         smallest_difference = None
 
         # right now this scans through all of them, make it stop in future when it finds a good
         # match
         for (timestamp, pose) in self.kobuki_base.location_data:
-            difference_s = math.abs(yolo_stamp.sec - timestamp.sec)
-            difference_ns = math.abs(yolo_stamp.nsec - timestamp.nsec)
+            print('timestamp: %f, Type: %s' % (timestamp, type(timestamp)))
+            print('yolo_stamp: %f, Type: %s' % (yolo_stamp, type(yolo_stamp)))
+            
+            difference_s = abs(yolo_stamp.sec - timestamp.sec)
+            difference_ns = abs(yolo_stamp.nsec - timestamp.nsec)
 
             ns_to_s = float(difference_ns) * (10**-9)
 

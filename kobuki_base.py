@@ -74,7 +74,7 @@ class KobukiBase():
         self.imu = data
         # print "IMU Z: ",
         # print self.imu.orientation.z
-        print("IMU Z: %f" % self.imu.orientation.z)
+        # print("IMU Z: %f" % self.imu.orientation.z)
     
     def reset_odometry(self):
         self.cmd_reset_odometry.publish(Empty())
