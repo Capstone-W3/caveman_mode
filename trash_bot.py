@@ -68,8 +68,8 @@ class TrashBot():
         # right now this scans through all of them, make it stop in future when it finds a good
         # match
         for (timestamp, pose) in self.kobuki_base.location_data:
-            print('timestamp: %f, Type: %s' % (timestamp, type(timestamp)))
-            print('yolo_stamp: %f, Type: %s' % (yolo_stamp, type(yolo_stamp)))
+            print('timestamp: %s, Type: %s' % (timestamp, type(timestamp)))
+            print('yolo_stamp: %s, Type: %s' % (yolo_stamp, type(yolo_stamp)))
             
             difference_s = abs(yolo_stamp.sec - timestamp.sec)
             difference_ns = abs(yolo_stamp.nsec - timestamp.nsec)
@@ -91,6 +91,9 @@ class TrashBot():
             
         reference_z = closest_pose.orientation.z 
         destination_angle = find_destination_z(closest_piece.x, reference_z)
+
+        print('Lock on reference z: %f' % reference_z)
+        print('Destination angle: %f' % destination_angle)
 
         self.locked_on.release() 
         
