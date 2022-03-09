@@ -46,7 +46,7 @@ class TrashYoloSubscriber():
 
         # Add all trash to the list of currently spotted trash
         for bounding_box in data.bounding_boxes:
-            self.trash.append(TrashPiece(bounding_box))
+            self.trash.append(TrashPiece(bounding_box, data.header))
 
         # print('trash count: %i' % len(self.trash))
 
@@ -55,9 +55,11 @@ class TrashYoloSubscriber():
 
 
 class TrashPiece():
-    def __init__(self, bounding_box):
+    def __init__(self, bounding_box, header):
         # Confidence that this trash is actually trash
         self.confidence = bounding_box.probability
+
+        self.timestamp = header.stamp
 
         # Bounding box coordinates
         self.x_bounds = (bounding_box.xmin, bounding_box.xmax)

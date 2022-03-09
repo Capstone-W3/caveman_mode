@@ -35,7 +35,7 @@ SUBSCRIBED TOPICS:
     - self.twist_with_covariance (geometry_msgs/TwistWithCovariance
         - Twist data, both linear and angular velocities in x,y,z axis, with a covariance vector
  
- - /mobile_base/events/imu_data -- Callback: self.ImuDataReceivedEvent 
+ - /mobile_base/events/imu_data_raw -- Callback: self.ImuDataReceivedEvent 
     - self.imu (sensor_msgs/Imu) - IMU data of bot in realtime, updated asynchronously
 
  - /mobile_base/events/button -- Callback: self.ButtonPressReceivedEvent
@@ -45,6 +45,7 @@ SUBSCRIBED TOPICS:
 class KobukiBase():
     # Initialize ROS Node
     def __init__(self, init_node = False):
+        self.moving = False
         if init_node:
             rospy.init_node('KobukiBase')
 
@@ -54,25 +55,26 @@ class KobukiBase():
 
         # SUBSCRIBERS
         rospy.Subscriber("/odom", Odometry, self.OdometryDataReceivedEvent)
-        rospy.Subscriber("/mobile_base/sensors/imu_data", Imu, self.ImuDataReceivedEvent)
+        rospy.Subscriber("/mobile_base/sensors/imu_data_raw", Imu, self.ImuDataReceivedEvent)
 
-        # track the last 600 frames of pose data with timestamps
-        self.location_data = FixedLengthFifo(600)
+        # track the last n frames of pose data with timestamps
+        self.location_data = FixedLengthFifo(1000)
         
     def OdometryDataReceivedEvent(self, data):
         self.pose_with_covariance = data.pose
         # print(self.pose_with_covariance.pose)
         self.twist_with_covariance = data.twist
 
-        timestamp_s = data.header.stamp.sec
-        timestamp_ns = data.header.stamp.nsec
+        # print("Odometry Z: %f" % self.pose_with_covariance.pose.orientation.z)
 
-        self.location_data.push((timestamp_s, timestamp_ns), self.pose_with_covariance.pose)
+        # push the most recent odometry data to the fifo to trach movement
+        self.location_data.push((data.header.stamp, self.pose_with_covariance.pose))
 
     def ImuDataReceivedEvent(self, data):
         self.imu = data
         # print "IMU Z: ",
         # print self.imu.orientation.z
+        print("IMU Z: %f" % self.imu.orientation.z)
     
     def reset_odometry(self):
         self.cmd_reset_odometry.publish(Empty())
@@ -124,10 +126,10 @@ point_2 = Pose(Point(-1, 0.0, 0.0), Quaternion(0.0, 0.0, 0.0, 1.0))
 
  
 if __name__ == '__main__':
-    turtlebot = TurtlebotControl(init_node = True)
+    turtlebot = KobukiBase(init_node = True)
     turtlebot.reset_odometry()
-    turtlebot.spin_async(0.3)
+    turtlebot.spin_async(0.4, timeout=500)
     print('sleeping')
-    time.sleep(3)
+    time.sleep(200)
     print('slept')
     turtlebot.stop()

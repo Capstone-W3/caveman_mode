@@ -44,6 +44,45 @@ class TrashBot():
             print('unconfident, not moving')
             return
 
+
+        # find our reference Z at the time the picture was taken
+        reference_z = 0
+
+        # do this by getting the timestamp of the yolo image and find the closest odometry frame
+        # with that type
+        yolo_stamp = trash_data.timestamp
+
+        closest_pose = None
+        closest_time = timestamp
+        smallest_difference = None
+
+        # right now this scans through all of them, make it stop in future when it finds a good
+        # match
+        for (timestamp, pose) in self.kobuki_base.location_data:
+            difference_s = math.abs(yolo_stamp.sec - timestamp.sec)
+            difference_ns = math.abs(yolo_stamp.nsec - timestamp.nsec)
+
+            ns_to_s = float(difference_ns) * (10**-9)
+
+            difference = difference_s + ns_to_s
+            
+            if closest_stamp == None:
+                closest_stamp = timestamp
+                closest_pose = pose
+                smallest_difference = difference
+                continue
+            else:
+                if difference < smallest_difference:
+                    closest_stamp = timestamp
+                    closest_pose = pose
+                    smallest_difference = difference
+            
+        reference_z = closest_pose.orientation.z
+        
+        destination_angle = find_destination_z(closest_piece.x, reference_z)
+
+        
+        '''
         # Now that we've isolated the closest piece, lets figure out which
         # way to turn
         center_x = self.trash_detector.frame_width // 2
@@ -81,7 +120,7 @@ class TrashBot():
 
             # fourthly, turn off the collection mechanism
             #self.collection_mechanism.StopMotor()
-
+        '''
 
 
 if __name__ == '__main__':
