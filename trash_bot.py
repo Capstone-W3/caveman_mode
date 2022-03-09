@@ -71,23 +71,18 @@ class TrashBot():
             print('timestamp: %s, Type: %s' % (timestamp, type(timestamp)))
             print('yolo_stamp: %s, Type: %s' % (yolo_stamp, type(yolo_stamp)))
             
-            difference_s = abs(yolo_stamp.sec - timestamp.sec)
-            difference_ns = abs(yolo_stamp.nsec - timestamp.nsec)
+            time_difference = abs(yolo_stamp - timestamp)
 
-            ns_to_s = float(difference_ns) * (10**-9)
-
-            difference = difference_s + ns_to_s
-            
             if closest_stamp == None:
                 closest_stamp = timestamp
                 closest_pose = pose
-                smallest_difference = difference
+                smallest_difference = time_difference
                 continue
             else:
                 if difference < smallest_difference:
                     closest_stamp = timestamp
                     closest_pose = pose
-                    smallest_difference = difference
+                    smallest_difference = time_difference
             
         reference_z = closest_pose.orientation.z 
         destination_angle = find_destination_z(closest_piece.x, reference_z)
