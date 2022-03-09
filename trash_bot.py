@@ -19,8 +19,10 @@ class TrashBot():
         # note: angular velocity direction is positive => counter clockwise
         self.angular_speed = 0.3 # radians/s
 
+        self.locked_on = Lock()
+
     def TrashDetected(self, trash_data):
-        print("Deteceted Trash!")
+        print("Detected Trash!")
         # print(type(trash_data))
 
         # isolate the closest piece of trash
@@ -31,7 +33,7 @@ class TrashBot():
         if len(trash_data) > 1:
             max_y = 0
             for piece in trash_data:
-                if piece.y_bounds[1] > max_y and piece.confidence > 0.6:
+                if piece.y_bounds[1] > max_y and piece.confidence > 0.80:
                     min_y = piece.y_bounds[0]
                     closest_piece = piece
 
@@ -39,11 +41,18 @@ class TrashBot():
 
 
         # if we aren't confident, stop the turtlebot and do nothing
-        if closest_piece.confidence < 0.6:
+        if closest_piece.confidence < 0.80:
             self.kobuki_base.stop()
             print('unconfident, not moving')
             return
 
+
+        # If we aren't locked on, acquire the lock so two trash pieces aren't
+        # locked onto simultaneously
+        if !self.locked_on.Locked():
+            self.locked_on.acquire()
+        else:
+            return
 
         # find our reference Z at the time the picture was taken
         reference_z = 0
@@ -77,10 +86,10 @@ class TrashBot():
                     closest_pose = pose
                     smallest_difference = difference
             
-        reference_z = closest_pose.orientation.z
-        
+        reference_z = closest_pose.orientation.z 
         destination_angle = find_destination_z(closest_piece.x, reference_z)
 
+        self.locked_on.release() 
         
         '''
         # Now that we've isolated the closest piece, lets figure out which
