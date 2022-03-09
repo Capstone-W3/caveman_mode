@@ -9,6 +9,7 @@
 
 import rospy
 import math
+from fifo import *
 from geometry_msgs.msg import *
 from nav_msgs.msg import *
 from sensor_msgs.msg import *
@@ -54,11 +55,19 @@ class KobukiBase():
         # SUBSCRIBERS
         rospy.Subscriber("/odom", Odometry, self.OdometryDataReceivedEvent)
         rospy.Subscriber("/mobile_base/sensors/imu_data", Imu, self.ImuDataReceivedEvent)
+
+        # track the last 600 frames of pose data with timestamps
+        self.location_data = FixedLengthFifo(600)
         
     def OdometryDataReceivedEvent(self, data):
         self.pose_with_covariance = data.pose
         # print(self.pose_with_covariance.pose)
         self.twist_with_covariance = data.twist
+
+        timestamp_s = data.header.stamp.sec
+        timestamp_ns = data.header.stamp.nsec
+
+        self.location_data.push((timestamp_s, timestamp_ns), self.pose_with_covariance.pose)
 
     def ImuDataReceivedEvent(self, data):
         self.imu = data
