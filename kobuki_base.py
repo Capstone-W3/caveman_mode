@@ -59,6 +59,9 @@ class KobukiBase():
 
         # track the last n frames of pose data with timestamps
         self.location_data = FixedLengthFifo(1000)
+
+        # angle margin of error when spinning, percentage
+        self.angular_error = 0.05
         
     def OdometryDataReceivedEvent(self, data):
         self.pose_with_covariance = data.pose
@@ -111,6 +114,61 @@ class KobukiBase():
             spin_thread.start()
         else:
             print('already moving, can\'t spin more')
+
+
+    def turn_to_angle(self, destination_z):
+        start_z = self.pose_with_covariance.pose.orientation.z
+        print('turn_to_angle start_z: %f destination_z: %f' % (start_z, destination_z))
+
+        # keep track which way we should turn
+        turn_ccw = False
+
+        # determine which direction is most efficient to turn
+
+        # if both start and finish have the same sign,
+        if (start_z >= 0 and destination_z >= 0 or (start_z <= 0 and destination_z <= 0)):
+            # turn counterclockwise if start < end
+            turn_ccw = start_z < destination_z
+        else:
+            # else if one is positive and one is negative
+            distance_cw = 0
+            distance_ccw = 0
+
+
+            # if the start_z is positive, clockwise distance is subtraction
+            if start_z > 0:
+                distance_cw = abs(start_z - destination_z)
+                distance_ccw = 2 - distance_cw
+            else:
+            # else the counterclockwise distance is subtraction
+                distance_ccw = abs(start_z - destination_z)
+                distance_cw = 2 - distance_ccw
+
+            if (distance_ccw < distance_cw):
+                turn_ccw = True
+            else:
+                turn_ccw = False
+
+        if (turn_ccw):
+            print('Turning Counterclockwise to try and get to %f' % destination_z)
+        else:
+            print('Turning Clockwise to try and get to %f' % destination_z)
+        
+        # negate the speed if we are turning clockwise
+        velocity = self.angular_speed
+        if (not turn_ccw):
+            velocity *= -1
+
+        # start spinning
+        self.spin_async(velocity), timeout=10)
+
+        # define the window which we say to go towards
+        window_buffer = abs(destination_z) * self.angular_error
+        
+        bound_ccw = destination_z + abs()
+        
+
+        self.stop()
 
 
     def stop(self):
