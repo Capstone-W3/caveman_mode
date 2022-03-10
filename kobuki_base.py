@@ -14,11 +14,10 @@ from geometry_msgs.msg import *
 from nav_msgs.msg import *
 from sensor_msgs.msg import *
 from std_msgs.msg import *
+from angle_calculator import *
 import threading
 import time
 
-def plus_or_minus(num, bound, compare):
-    return compare >= num - bound and compare <= num + bound
 
 '''
 KobukiBase ROS NODE
@@ -159,14 +158,24 @@ class KobukiBase():
         if (not turn_ccw):
             velocity *= -1
 
-        # start spinning
-        self.spin_async(velocity), timeout=10)
-
         # define the window which we say to go towards
         window_buffer = abs(destination_z) * self.angular_error
         
-        bound_ccw = destination_z + abs()
+        bound_ccw = destination_z + window_buffer
+        bound_cw = destination_z - window_buffer
+
+        # if we overshoot and go past -1 or 1, need to correct with
+        # the correct angle within the bounds of [-1,1]
+        if (bound_ccw > 1):
+            bound_ccw = (2 - bound_ccw) * -1.0
+        if (bound_cw < -1):
+            bound_cw = 2 + bound_cw
+       
+        # start spinning
+        self.spin_async(velocity, timeout=10)
         
+        while not angle_in_between(self.pose_with_covariance.pose.orientation.z, bound_cw, bound_ccw):
+            continue
 
         self.stop()
 

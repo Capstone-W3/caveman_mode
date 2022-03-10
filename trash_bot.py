@@ -94,8 +94,10 @@ class TrashBot():
         print('Lock on reference z: %f' % reference_z)
         print('Destination angle: %f' % destination_angle)
 
+        self.kobuki_base.turn_to_angle(destination_angle)
+
         self.locked_on.release() 
-        
+        print('locked off')        
         '''
         # Now that we've isolated the closest piece, lets figure out which
         # way to turn

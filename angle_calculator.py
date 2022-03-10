@@ -11,7 +11,6 @@ half_fov = camera_fov / 2.0
 leg_length = 462.139 # leg length between center of  frame and camera
 
 
-
 def find_destination_z(pixel_x, reference_z):
     # left is positive in terms of z angle
 
@@ -56,6 +55,28 @@ def find_destination_z(pixel_x, reference_z):
         final_destination = destination_z
 
     return final_destination
+
+
+def angle_is_between(input_z, bound_cw, bound_ccw):
+    
+    cw_bound_sign = bound_cw >= 0
+    ccw_bound_sign = bound_ccw >= 0
+
+    # if we have the same sign, just make sure its between the two values
+    if cw_bound_sign == ccw_bound_sign:
+        #print("same sign")
+	return input_z >= bound_cw and input_z < bound_ccw    
+    elif bound_cw > 0.5:
+        #print("diff sign, crossing -1/1 border")
+        # else if the clockwise bound is > 0.5, which is only possible
+        # if the bounds are on the opposite side of the -1/1 border
+        return input_z >= bound_cw or input_z <= bound_ccw
+    else:
+        #print("diff sign, crossing 0 border")
+        # this case only triggers if the bounds are on opposite sides of 0, which
+        # normal math works for
+        return input_z >= bound_cw and input_z < bound_ccw
+
 
 if __name__ == '__main__':
     xs = [i for i in range(frame_width)]
