@@ -59,6 +59,10 @@ class KobukiBase():
         # track the last n frames of pose data with timestamps
         self.location_data = FixedLengthFifo(1000)
 
+        # default speeds
+        self.angular_speed = 0.3
+        self.linear_speed = 0.2
+        
         # angle margin of error when spinning, percentage
         self.angular_error = 0.05
         
@@ -174,7 +178,7 @@ class KobukiBase():
         # start spinning
         self.spin_async(velocity, timeout=10)
         
-        while not angle_in_between(self.pose_with_covariance.pose.orientation.z, bound_cw, bound_ccw):
+        while not angle_is_between(self.pose_with_covariance.pose.orientation.z, bound_cw, bound_ccw):
             continue
 
         self.stop()

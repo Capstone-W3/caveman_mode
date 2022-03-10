@@ -72,8 +72,8 @@ class TrashBot():
         # right now this scans through all of them, make it stop in future when it finds a good
         # match
         for (timestamp, pose) in self.kobuki_base.location_data:
-            print('timestamp: %s, Type: %s' % (timestamp, type(timestamp)))
-            print('yolo_stamp: %s, Type: %s' % (yolo_stamp, type(yolo_stamp)))
+            #print('timestamp: %s, Type: %s' % (timestamp, type(timestamp)))
+            #print('yolo_stamp: %s, Type: %s' % (yolo_stamp, type(yolo_stamp)))
             
             time_difference = abs(yolo_stamp - timestamp)
 
