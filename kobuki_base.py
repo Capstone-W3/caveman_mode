@@ -18,7 +18,6 @@ from angle_calculator import *
 import threading
 import time
 
-
 '''
 KobukiBase ROS NODE
 
@@ -43,7 +42,7 @@ SUBSCRIBED TOPICS:
 '''
 class KobukiBase():
     # Initialize ROS Node
-    def __init__(self, init_node = False):
+    def __init__(self, init_node = False, angular_speed = 0.3, linear_speed = 0.2):
         self.moving = False
         if init_node:
             rospy.init_node('KobukiBase')
@@ -60,18 +59,25 @@ class KobukiBase():
         self.location_data = FixedLengthFifo(1000)
 
         # default speeds
-        self.angular_speed = 0.3
-        self.linear_speed = 0.2
+        self.angular_speed = angular_speed
+        self.linear_speed = linear_speed
         
-        # angle margin of error when spinning, percentage
-        self.angular_error = 0.05
+        # angle margin of error when spinning
+        self.angular_error = 0.01
+
+        # angle odometry parameter
+        self.kP = math.pi
+        self.kD = -1
+
+        # time to stop moving if we haven't reached destination
+        self.movement_timeout = 5
         
     def OdometryDataReceivedEvent(self, data):
         self.pose_with_covariance = data.pose
         # print(self.pose_with_covariance.pose)
         self.twist_with_covariance = data.twist
 
-        # print("Odometry Z: %f" % self.pose_with_covariance.pose.orientation.z)
+        #print("Odometry Z: %f" % self.pose_with_covariance.pose.orientation.z)
 
         # push the most recent odometry data to the fifo to trach movement
         self.location_data.push((data.header.stamp, self.pose_with_covariance.pose))
@@ -123,8 +129,50 @@ class KobukiBase():
         start_z = self.pose_with_covariance.pose.orientation.z
         print('turn_to_angle start_z: %f destination_z: %f' % (start_z, destination_z))
 
+        if (self.moving):
+            return
+        
+        self.moving = True
+
+        command= Twist()
+        polling_rate = 10.0 # Hz
+        dt = 1.0 / polling_rate
+        r = rospy.Rate(polling_rate)
+        time_run = 0
+
+        last_err = 0
+
+        while time_run < self.movement_timeout and not within_plus_or_minus(self.pose_with_covariance.pose.orientation.z, destination_z, self.angular_error):
+            time_run += dt
+
+            err = destination_z - self.pose_with_covariance.pose.orientation.z
+
+            command.angular.z = (self.kP * err) + ((last_err - err) / dt) * self.kD
+            
+            last_err = err
+            
+            # print(command.angular.z)
+            self.cmd_vel.publish(command)
+            r.sleep()
+
+        print('end z: %f' % self.pose_with_covariance.pose.orientation.z)
+        print('reached destination: %s' % within_plus_or_minus(self.pose_with_covariance.pose.orientation.z, destination_z, self.angular_error))
+        
+        
+        
+        self.stop()
+        
+
+
+
+        '''
+
         # keep track which way we should turn
         turn_ccw = False
+        distance_cw = 0
+        distance_ccw = 0
+        distance = 0
+
 
         # determine which direction is most efficient to turn
 
@@ -132,11 +180,9 @@ class KobukiBase():
         if (start_z >= 0 and destination_z >= 0 or (start_z <= 0 and destination_z <= 0)):
             # turn counterclockwise if start < end
             turn_ccw = start_z < destination_z
+            distance = abs(start_z - destination_z)
         else:
             # else if one is positive and one is negative
-            distance_cw = 0
-            distance_ccw = 0
-
 
             # if the start_z is positive, clockwise distance is subtraction
             if start_z > 0:
@@ -152,19 +198,27 @@ class KobukiBase():
             else:
                 turn_ccw = False
 
+
+        
+        destination_adjusted = 0 
+
         if (turn_ccw):
             print('Turning Counterclockwise to try and get to %f' % destination_z)
-        else:
+            destination_adjusted = destination_z + distance_ccw
+	    else:
             print('Turning Clockwise to try and get to %f' % destination_z)
+            destination_adjusted = destination_z - distance_ccw
         
+        # define the window which we say to go towards
+        window_buffer = abs(destination_z) * self.angular_error
+        
+        
+
         # negate the speed if we are turning clockwise
         velocity = self.angular_speed
         if (not turn_ccw):
             velocity *= -1
 
-        # define the window which we say to go towards
-        window_buffer = abs(destination_z) * self.angular_error
-        
         bound_ccw = destination_z + window_buffer
         bound_cw = destination_z - window_buffer
 
@@ -174,18 +228,43 @@ class KobukiBase():
             bound_ccw = (2 - bound_ccw) * -1.0
         if (bound_cw < -1):
             bound_cw = 2 + bound_cw
-       
-        # start spinning
-        self.spin_async(velocity, timeout=10)
+
+        # additional control for the amount of time should help prevent overshooting
+        # by timing out after we reach the time that should be taken by the turn
+        if (turn_ccw):
+            distance = distance_ccw
+        else:
+            distance = distance_cw
+
         
-        while not angle_is_between(self.pose_with_covariance.pose.orientation.z, bound_cw, bound_ccw):
+
+        # time that should be taken by the turn
+        approximate_turn_time = (distance / self.angular_speed)
+        # add a bit of a buffer since this is a timeout
+        approximate_turn_time += (approximate_turn_time * 0.05)
+
+        # start spinning
+        self.spin_async(velocity, timeout = approximate_turn_time)
+        
+        # check 10 times/s:
+        polling_rate = 10 #Hz
+        r = rospy.Rate(polling_rate)
+        time_run = 0
+
+        print('Timeout Time: %f' % approximate_turn_time)
+
+        while not angle_is_between(self.pose_with_covariance.pose.orientation.z, bound_cw, bound_ccw) and time_run <= approximate_turn_time:
+            time_run += (1.0 / polling_rate)
+            r.sleep()
             continue
 
         self.stop()
 
+        
+        '''
 
     def stop(self):
-        print('attempting to stop with KobukiBase.stop()')
+        # print('attempting to stop with KobukiBase.stop()')
         stop_cmd = Twist()
         self.moving = False
         self.cmd_vel.publish(stop_cmd)    
@@ -199,8 +278,10 @@ point_2 = Pose(Point(-1, 0.0, 0.0), Quaternion(0.0, 0.0, 0.0, 1.0))
 if __name__ == '__main__':
     turtlebot = KobukiBase(init_node = True)
     turtlebot.reset_odometry()
-    turtlebot.spin_async(0.4, timeout=500)
-    print('sleeping')
-    time.sleep(200)
-    print('slept')
-    turtlebot.stop()
+    rospy.sleep(1)
+    turtlebot.turn_to_angle(1)
+    turtlebot.turn_to_angle(0)
+    turtlebot.turn_to_angle(0.5)
+    turtlebot.turn_to_angle(-0.5)
+    turtlebot.turn_to_angle(0)
+    turtlebot.turn_to_angle(-1)

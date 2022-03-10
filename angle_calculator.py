@@ -77,6 +77,10 @@ def angle_is_between(input_z, bound_cw, bound_ccw):
         # normal math works for
         return input_z >= bound_cw and input_z < bound_ccw
 
+def within_plus_or_minus(val, target, margin):
+    if margin < 0:
+        margin = -1 * margin
+    return val >= (target - margin) and (val <= target + margin)
 
 if __name__ == '__main__':
     xs = [i for i in range(frame_width)]
