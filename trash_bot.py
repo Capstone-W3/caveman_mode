@@ -26,6 +26,11 @@ class TrashBot():
 
 
     def TrashDetected(self, trash_data):
+        
+        if (self.locked_on.locked()):
+            print('already locked on, ignoring found trash')
+            return
+        
         print("Detected Trash!")
         # print(type(trash_data))
 
@@ -41,15 +46,11 @@ class TrashBot():
                     min_y = piece.y_bounds[0]
                     closest_piece = piece
 
-        print('closest piece is at (%i, %i)' % (closest_piece.x, closest_piece.y))
-
-
         # if we aren't confident, stop the turtlebot and do nothing
         if closest_piece.confidence < self.confidence_threshold:
             self.kobuki_base.stop()
             print('unconfident, not moving')
             return
-
 
         # If we aren't locked on, acquire the lock so two trash pieces aren't
         # locked onto simultaneously
@@ -57,6 +58,9 @@ class TrashBot():
             self.locked_on.acquire()
         else:
             return
+ 
+        print('Closest piece is at (%i, %i)' % (closest_piece.x, closest_piece.y))
+        print('Locked on: %s' % self.locked_on.locked())
 
         # find our reference Z at the time the picture was taken
         reference_z = 0
@@ -91,10 +95,12 @@ class TrashBot():
         reference_z = closest_pose.orientation.z 
         destination_angle = find_destination_z(closest_piece.x, reference_z)
 
-        print('Lock on reference z: %f' % reference_z)
-        print('Destination angle: %f' % destination_angle)
+        print('Attempting to turn to destination angle %f' % destination_angle)
 
         self.kobuki_base.turn_to_angle(destination_angle)
+
+        print('sleeping for 10 seconds...')
+        rospy.sleep(10)
 
         self.locked_on.release() 
         print('locked off')        
