@@ -14,7 +14,8 @@ class TrashBot():
         self.trash_detector = TrashYoloSubscriber(self.TrashDetected)
         self.kobuki_base = KobukiBase()
         self.collection_mechanism = SerialMotor()
-        # self.collection_mechanism.Connect()
+        motor_connected = self.collection_mechanism.Connect()
+        print('Motor Connected: %s' % motor_connected)
         
         self.linear_speed = 0.4 # m/s
         # note: angular velocity direction is positive => counter clockwise
@@ -22,7 +23,7 @@ class TrashBot():
 
         self.locked_on = threading.Lock()
         
-        self.confidence_threshold = 0.6
+        self.confidence_threshold = 0.85
 
 
     def TrashDetected(self, trash_data):
@@ -99,8 +100,14 @@ class TrashBot():
 
         self.kobuki_base.turn_to_angle(destination_angle)
 
+        print('Starting the Collection Mechanism')
+        self.collection_mechanism.StartMotor()
+
         print('sleeping for 10 seconds...')
         rospy.sleep(10)
+        
+        print('Stopping the Collection Mechanism')
+        self.collection_mechanism.StopMotor()
 
         self.locked_on.release() 
         print('locked off')        

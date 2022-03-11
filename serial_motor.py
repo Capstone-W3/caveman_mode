@@ -16,25 +16,27 @@ class SerialMotor():
 
         # Get the port name and remove the trailing newline that the '>'
         # operator puts into the text file
-        port_name = open("port.txt").read()[:-1]
+        self.port_name = open("port.txt").read()[:-1]
         
         # delete the text file with the port name
         os.system('rm port.txt')
 
-        print("motor serial port: %s" % port_name)
+        print("motor serial port: %s" % self.port_name)
 
         # store the arduino and the connectedness of it
         self.arduino = None
         self.connected = False
+
+        self.baud_rate = 9600
         
         
     # Attempt to connect to the motor over serial
     # returns bool, true if successful, false otherwise
-    def Connect():
+    def Connect(self):
         # Serial connections (or /dev/?) can only ba acccessed with superuser
         # permissions
         try:
-            self.arduino = serial.Serial(port_name, baud_rate)
+            self.arduino = serial.Serial(self.port_name, self.baud_rate)
         except Exception as e:
             print("Exception: %s" % str(e))
             print("Must have SuperUser permissions to open serial port")
@@ -67,4 +69,12 @@ class SerialMotor():
             self.connected = False
 
         
-
+if __name__ == '__main__':
+    motor = SerialMotor()
+    connected = motor.Connect()
+    print('Connected: %s' % connected)
+    motor.StartMotor()
+    time.sleep(5)
+    motor.StopMotor()
+    time.sleep(1)
+    motor.Disconnect()

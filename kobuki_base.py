@@ -1,12 +1,4 @@
 #!/usr/bin/env python
-
-
-# A very basic TurtleBot script that moves TurtleBot forward indefinitely. Press CTRL + C to stop.  To run:
-# On TurtleBot:
-# roslaunch turtlebot_bringup minimal.launch
-# On work station:
-# python goforward.py
-
 import rospy
 import math
 from fifo import *
@@ -66,8 +58,8 @@ class KobukiBase():
         self.angular_error = 0.01
 
         # angle odometry parameter
-        self.kP = math.pi
-        self.kD = -1
+        self.kP = 4
+        self.kD = -0.2
 
         # time to stop moving if we haven't reached destination
         self.movement_timeout = 5
@@ -147,8 +139,17 @@ class KobukiBase():
 
             err = destination_z - self.pose_with_covariance.pose.orientation.z
 
-            command.angular.z = (self.kP * err) + ((last_err - err) / dt) * self.kD
+            velocity_val = (self.kP * err) + ((last_err - err) / dt) * self.kD
             
+            min_turning_speed = 0.4
+
+            if velocity_val > 0:
+                velocity_val = max(velocity_val, min_turning_speed)
+            elif velocity_val < 0:
+                velocity_val = min(velocity_val, -1 * min_turning_speed)
+
+            command.angular.z = velocity_val
+
             last_err = err
             
             # print(command.angular.z)
