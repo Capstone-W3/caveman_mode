@@ -82,6 +82,9 @@ def within_plus_or_minus(val, target, margin):
         margin = -1 * margin
     return val >= (target - margin) and (val <= target + margin)
 
+def distance_between_points(x1, y1, x2, y2):
+    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
 if __name__ == '__main__':
     xs = [i for i in range(frame_width)]
     angle_dict = {}

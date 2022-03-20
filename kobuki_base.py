@@ -54,16 +54,19 @@ class KobukiBase():
         self.angular_speed = angular_speed
         self.linear_speed = linear_speed
         
-        # angle margin of error when spinning
+        # angle margin of error when spinning (pi * radians)
         self.angular_error = 0.01
+
+        # linear margin of error when moving forward/backwards (meters)
+        self.linear_error = 0.01
 
         # angle odometry parameter
         self.kP = 4
         self.kD = -0.2
 
-        # time to stop moving if we haven't reached destination
+        # time to stop moving if we haven't reached destination (seconds)
         self.movement_timeout = 5
-        
+
     def OdometryDataReceivedEvent(self, data):
         self.pose_with_covariance = data.pose
         # print(self.pose_with_covariance.pose)
@@ -164,111 +167,179 @@ class KobukiBase():
         self.stop()
         
 
-
-
-        '''
-
-        # keep track which way we should turn
-        turn_ccw = False
-        distance_cw = 0
-        distance_ccw = 0
-        distance = 0
-
-
-        # determine which direction is most efficient to turn
-
-        # if both start and finish have the same sign,
-        if (start_z >= 0 and destination_z >= 0 or (start_z <= 0 and destination_z <= 0)):
-            # turn counterclockwise if start < end
-            turn_ccw = start_z < destination_z
-            distance = abs(start_z - destination_z)
-        else:
-            # else if one is positive and one is negative
-
-            # if the start_z is positive, clockwise distance is subtraction
-            if start_z > 0:
-                distance_cw = abs(start_z - destination_z)
-                distance_ccw = 2 - distance_cw
-            else:
-            # else the counterclockwise distance is subtraction
-                distance_ccw = abs(start_z - destination_z)
-                distance_cw = 2 - distance_ccw
-
-            if (distance_ccw < distance_cw):
-                turn_ccw = True
-            else:
-                turn_ccw = False
-
-
-        
-        destination_adjusted = 0 
-
-        if (turn_ccw):
-            print('Turning Counterclockwise to try and get to %f' % destination_z)
-            destination_adjusted = destination_z + distance_ccw
-	    else:
-            print('Turning Clockwise to try and get to %f' % destination_z)
-            destination_adjusted = destination_z - distance_ccw
-        
-        # define the window which we say to go towards
-        window_buffer = abs(destination_z) * self.angular_error
-        
-        
-
-        # negate the speed if we are turning clockwise
-        velocity = self.angular_speed
-        if (not turn_ccw):
-            velocity *= -1
-
-        bound_ccw = destination_z + window_buffer
-        bound_cw = destination_z - window_buffer
-
-        # if we overshoot and go past -1 or 1, need to correct with
-        # the correct angle within the bounds of [-1,1]
-        if (bound_ccw > 1):
-            bound_ccw = (2 - bound_ccw) * -1.0
-        if (bound_cw < -1):
-            bound_cw = 2 + bound_cw
-
-        # additional control for the amount of time should help prevent overshooting
-        # by timing out after we reach the time that should be taken by the turn
-        if (turn_ccw):
-            distance = distance_ccw
-        else:
-            distance = distance_cw
-
-        
-
-        # time that should be taken by the turn
-        approximate_turn_time = (distance / self.angular_speed)
-        # add a bit of a buffer since this is a timeout
-        approximate_turn_time += (approximate_turn_time * 0.05)
-
-        # start spinning
-        self.spin_async(velocity, timeout = approximate_turn_time)
-        
-        # check 10 times/s:
-        polling_rate = 10 #Hz
-        r = rospy.Rate(polling_rate)
-        time_run = 0
-
-        print('Timeout Time: %f' % approximate_turn_time)
-
-        while not angle_is_between(self.pose_with_covariance.pose.orientation.z, bound_cw, bound_ccw) and time_run <= approximate_turn_time:
-            time_run += (1.0 / polling_rate)
-            r.sleep()
-            continue
-
-        self.stop()
-
-        
-        '''
-
     def stop(self):
         # print('attempting to stop with KobukiBase.stop()')
         stop_cmd = Twist()
         self.moving = False
-        self.cmd_vel.publish(stop_cmd)    
+        self.cmd_vel.publish(stop_cmd)
+
+    def move_forward(self, distance_meters):
+
+        if (self.moving):
+            return
+
+        self.moving = True
+
+        start_angle_quaternion = self.pose_with_covariance.pose.orientation.z
+        start_x = self.pose_with_covariance.pose.position.x
+        start_y = self.pose_with_covariance.pose.position.y
+        start_angle_radians = start_angle_quaternion * math.pi
+
+        print('Start = (%f, %f), Angle = %f (pi*radians)' % (start_x, start_y, start_angle_quaternion))
+        
+        delta_x = distance_meters * math.cos(start_angle_radians)
+        delta_y = distance_meters * math.sin(start_angle_radians)
+
+        destination_x = start_x + delta_x
+        destination_y = start_y + delta_y
+
+        print('Destination = (%f, %f), delta_x = %f, delta_y = %f' % (destination_x, destination_y, delta_x, delta_y))
+
+        move_cmd = Twist()
+        polling_rate = 10.0 #Hz
+        dt = 1.0 / polling_rate
+        r = rospy.Rate(polling_rate)
+        time_run = 0
+
+        last_err = 0
+
+        last_angle_err = 0
+        angle_err = float("inf")
+
+        # measuring success by absolute distance to target calculated in 2 dimensions
+        # start with infinity so it isn't within bounds, recalculate once per cycle
+        err = float("inf")
+
+        while time_run < self.movement_timeout and not within_plus_or_minus(err, 0, self.linear_error):
+            time_run += dt
+
+            curr_pose = self.pose_with_covariance.pose.position
+            curr_x = curr_pose.x
+            curr_y = curr_pose.y
+            curr_angle = self.pose_with_covariance.pose.orientation.z
+            
+            # error is the distance to the target
+            err = math.sqrt((curr_y - destination_y)**2 + (curr_x - destination_x)**2)
+            #print('err: %f, last_err: %f' % (err, last_err))
+            print('position: (%f, %f) angle: %f  distance: %f' % (curr_x, curr_y, curr_angle, err))
+
+            min_movement_speed = 0.3
+            max_movement_speed = 0.5
+
+            velocity_val = ((self.kP * err) / 10) + ((last_err - err) / dt) * self.kD
+
+            if velocity_val > 0:
+                velocity_val = max(velocity_val, min_movement_speed)
+                velocity_val = min(velocity_val, max_movement_speed)
+            elif velocity_val < 0:
+                velocity_val = min(velocity_val, -1 * min_movement_speed)
+                velocity_val = max(velocity_val, -1 * max_movement_speed)
+
+            # print('velocity: %f m/s' % velocity_val)
+
+            move_cmd.linear.x = velocity_val
+
+            angle_err = start_angle_quaternion - curr_angle
+
+            angular_vel = (self.kP * angle_err) + ((last_angle_err - angle_err) / dt) * self.kD
+
+            move_cmd.angular.z = angular_vel
+
+            #print('move_cmd: %s' % move_cmd)
+
+            last_angle_err = angle_err
+            last_err = err
+
+            self.cmd_vel.publish(move_cmd)
+            r.sleep()
+
+        print('Final position: (%f, %f)' % (curr_x, curr_y))
+        print('Final Err: %f' % err)
+        print('time_run: %f' % time_run)
+
+        self.stop()
+        
+
+    def move(self, distance_meters):
+        if (self.moving):
+            return
+
+        self.moving = True
+
+        start_angle_quaternion = self.pose_with_covariance.pose.orientation.z
+        start_x = self.pose_with_covariance.pose.position.x
+        start_y = self.pose_with_covariance.pose.position.y
+        start_angle_radians = start_angle_quaternion * math.pi
+
+        print('Start = (%f, %f), Angle = %f (pi*radians)' % (start_x, start_y, start_angle_quaternion))
+        
+        delta_x = distance_meters * math.cos(start_angle_radians)
+        delta_y = distance_meters * math.sin(start_angle_radians)
+
+        destination_x = start_x + delta_x
+        destination_y = start_y + delta_y
+
+        print('Destination = (%f, %f), delta_x = %f, delta_y = %f' % (destination_x, destination_y, delta_x, delta_y))
+
+        move_cmd = Twist()
+        polling_rate = 10.0 #Hz
+        dt = 1.0 / polling_rate
+        r = rospy.Rate(polling_rate)
+        time_run = 0
+
+        last_err = 0
+
+        last_angle_err = 0
+        angle_err = float("inf")
+
+        # measuring success by distance from starting point relation to goal,
+        # calculated in 2 dimensions
+        # start with infinity so it isn't within bounds, recalculate once per cycle
+        err = float("inf")
+
+        while time_run < self.movement_timeout and not within_plus_or_minus(err, 0, self.linear_error):
+            time_run += dt
+
+            curr_pose = self.pose_with_covariance.pose.position
+            curr_x = curr_pose.x
+            curr_y = curr_pose.y
+            curr_angle = self.pose_with_covariance.pose.orientation.z
+            
+            distance_traveled = distance_between_points(curr_x, curr_y, start_x, start_y)
+
+            err = distance_meters - distance_traveled
+
+            min_movement_speed = 0.1
+            max_movement_speed = 0.5
+
+            velocity_val = ((self.kP * err) / 3) + ((last_err - err) / dt) * self.kD
+
+            if velocity_val > 0:
+                velocity_val = max(velocity_val, min_movement_speed)
+                velocity_val = min(velocity_val, max_movement_speed)
+            elif velocity_val < 0:
+                velocity_val = min(velocity_val, -1 * min_movement_speed)
+                velocity_val = max(velocity_val, -1 * max_movement_speed)
+
+            print('distance moved: %f, error: %f, velocity: %f m/s' % (distance_traveled, err, velocity_val))
+
+            move_cmd.linear.x = velocity_val
+            self.cmd_vel.publish(move_cmd)
+            last_err = err
+            r.sleep()
+
+        self.stop()
+
+        print('Final position: (%f, %f)' % (curr_x, curr_y))
+        print('Destination goal: (%f, %f)' % (destination_x, destination_y))
+        print('distance from goal: %f' % distance_between_points(curr_x, curr_y, destination_x, destination_y))
+        print('time_run: %f' % time_run)
+
+
+
+
+
+
 
 
 origin = Pose(Point(0.0, 0.0, 0.0), Quaternion(0.0, 0.0, 0.0, 1.0))
@@ -280,9 +351,6 @@ if __name__ == '__main__':
     turtlebot = KobukiBase(init_node = True)
     turtlebot.reset_odometry()
     rospy.sleep(1)
-    turtlebot.turn_to_angle(1)
-    turtlebot.turn_to_angle(0)
-    turtlebot.turn_to_angle(0.5)
-    turtlebot.turn_to_angle(-0.5)
-    turtlebot.turn_to_angle(0)
-    turtlebot.turn_to_angle(-1)
+    turtlebot.move(1)
+    rospy.sleep(1)
+
