@@ -12,6 +12,9 @@ class TrashBot():
     def __init__(self):
         rospy.init_node('trash_bot')
 
+        # if this is set to true, it will start responding to trash 
+        # it sees in the environment via the YOLO subscriber
+        self.respond_to_trash = False
         
         self.linear_speed = 0.4 # m/s
         # note: angular velocity direction is positive => counter clockwise
@@ -37,6 +40,9 @@ class TrashBot():
         
         if (self.locked_on.locked()):
             print('already locked on, ignoring found trash')
+            return
+        elif (not self.respond_to_trash):
+            print('Found trash but I\'m not started up')
             return
         
         print("Detected Trash!")
@@ -121,7 +127,7 @@ class TrashBot():
                     smallest_difference = time_difference
 
         # distance_away = closest_image[closest_piece.y][closest_piece.x] # meters, unadjusted for angle
-	distance_away = self.depth_camera.get_depth_at_pixel(closest_image, closest_piece.x, closest_piece.y)
+        distance_away = self.depth_camera.get_depth_at_pixel(closest_image, closest_piece.x, closest_piece.y)
 
         reference_z = closest_pose.orientation.z 
         destination_angle = find_destination_z(closest_piece.x, reference_z, distance_away)
@@ -133,8 +139,8 @@ class TrashBot():
         print('Starting the Collection Mechanism')
         self.collection_mechanism.StartMotor()
 
-	# sleeping for half a second here gives the motor time to spin up to max speed	
-	rospy.sleep(0.5)
+        # sleeping for half a second here gives the motor time to spin up to max speed	
+        rospy.sleep(0.5)
 
         print('Trash is %3f m away, attempting to attack' % distance_away)
         self.kobuki_base.move(distance_away)
@@ -143,9 +149,14 @@ class TrashBot():
         self.collection_mechanism.StopMotor()
 
         self.locked_on.release() 
-        print('locked off')        
+        print('locked off')
 
+    def StartUp(self):
+        self.respond_to_trash = True
 
+    def ShutDown(self):
+        self.kobuki_base.stop()
+        self.respond_to_trash = False
 
 if __name__ == '__main__':
     t = TrashBot()

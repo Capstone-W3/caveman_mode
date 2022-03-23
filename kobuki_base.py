@@ -137,7 +137,7 @@ class KobukiBase():
 
         last_err = 0
 
-        while time_run < self.movement_timeout and not within_plus_or_minus(self.pose_with_covariance.pose.orientation.z, destination_z, self.angular_error):
+        while time_run < self.movement_timeout and not within_plus_or_minus(self.pose_with_covariance.pose.orientation.z, destination_z, self.angular_error) and self.moving:
             time_run += dt
 
             err = destination_z - self.pose_with_covariance.pose.orientation.z
@@ -172,93 +172,6 @@ class KobukiBase():
         stop_cmd = Twist()
         self.moving = False
         self.cmd_vel.publish(stop_cmd)
-
-    def move_forward(self, distance_meters):
-
-        if (self.moving):
-            return
-
-        self.moving = True
-
-        start_angle_quaternion = self.pose_with_covariance.pose.orientation.z
-        start_x = self.pose_with_covariance.pose.position.x
-        start_y = self.pose_with_covariance.pose.position.y
-        start_angle_radians = start_angle_quaternion * math.pi
-
-        print('Start = (%f, %f), Angle = %f (pi*radians)' % (start_x, start_y, start_angle_quaternion))
-        
-        delta_x = distance_meters * math.cos(start_angle_radians)
-        delta_y = distance_meters * math.sin(start_angle_radians)
-
-        destination_x = start_x + delta_x
-        destination_y = start_y + delta_y
-
-        print('Destination = (%f, %f), delta_x = %f, delta_y = %f' % (destination_x, destination_y, delta_x, delta_y))
-
-        move_cmd = Twist()
-        polling_rate = 10.0 #Hz
-        dt = 1.0 / polling_rate
-        r = rospy.Rate(polling_rate)
-        time_run = 0
-
-        last_err = 0
-
-        last_angle_err = 0
-        angle_err = float("inf")
-
-        # measuring success by absolute distance to target calculated in 2 dimensions
-        # start with infinity so it isn't within bounds, recalculate once per cycle
-        err = float("inf")
-
-        while time_run < self.movement_timeout and not within_plus_or_minus(err, 0, self.linear_error):
-            time_run += dt
-
-            curr_pose = self.pose_with_covariance.pose.position
-            curr_x = curr_pose.x
-            curr_y = curr_pose.y
-            curr_angle = self.pose_with_covariance.pose.orientation.z
-            
-            # error is the distance to the target
-            err = math.sqrt((curr_y - destination_y)**2 + (curr_x - destination_x)**2)
-            #print('err: %f, last_err: %f' % (err, last_err))
-            print('position: (%f, %f) angle: %f  distance: %f' % (curr_x, curr_y, curr_angle, err))
-
-            min_movement_speed = 0.3
-            max_movement_speed = 0.5
-
-            velocity_val = ((self.kP * err) / 10) + ((last_err - err) / dt) * self.kD
-
-            if velocity_val > 0:
-                velocity_val = max(velocity_val, min_movement_speed)
-                velocity_val = min(velocity_val, max_movement_speed)
-            elif velocity_val < 0:
-                velocity_val = min(velocity_val, -1 * min_movement_speed)
-                velocity_val = max(velocity_val, -1 * max_movement_speed)
-
-            # print('velocity: %f m/s' % velocity_val)
-
-            move_cmd.linear.x = velocity_val
-
-            angle_err = start_angle_quaternion - curr_angle
-
-            angular_vel = (self.kP * angle_err) + ((last_angle_err - angle_err) / dt) * self.kD
-
-            move_cmd.angular.z = angular_vel
-
-            #print('move_cmd: %s' % move_cmd)
-
-            last_angle_err = angle_err
-            last_err = err
-
-            self.cmd_vel.publish(move_cmd)
-            r.sleep()
-
-        print('Final position: (%f, %f)' % (curr_x, curr_y))
-        print('Final Err: %f' % err)
-        print('time_run: %f' % time_run)
-
-        self.stop()
-        
 
     def move(self, distance_meters):
         if (self.moving):
@@ -297,7 +210,7 @@ class KobukiBase():
         # start with infinity so it isn't within bounds, recalculate once per cycle
         err = float("inf")
 
-        while time_run < self.movement_timeout and not within_plus_or_minus(err, 0, self.linear_error):
+        while time_run < self.movement_timeout and not within_plus_or_minus(err, 0, self.linear_error) and self.moving:
             time_run += dt
 
             curr_pose = self.pose_with_covariance.pose.position
