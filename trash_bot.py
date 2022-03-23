@@ -4,6 +4,7 @@ from kobuki_base import *
 from yolo_subscriber import *
 from serial_motor import *
 from angle_calculator import *
+from realsense_subscriber import *
 import threading
 import time
 
@@ -11,20 +12,26 @@ class TrashBot():
     def __init__(self):
         rospy.init_node('trash_bot')
 
-        self.trash_detector = TrashYoloSubscriber(self.TrashDetected)
-        self.kobuki_base = KobukiBase()
-        self.collection_mechanism = SerialMotor()
-        motor_connected = self.collection_mechanism.Connect()
-        print('Motor Connected: %s' % motor_connected)
         
         self.linear_speed = 0.4 # m/s
         # note: angular velocity direction is positive => counter clockwise
         self.angular_speed = 0.3 # radians/s
-
-        self.locked_on = threading.Lock()
         
-        self.confidence_threshold = 0.85
-
+        self.confidence_threshold = 0.8
+        self.locked_on = threading.Lock()
+	
+        self.depth_camera = RealsenseSubscriber()
+        self.kobuki_base = KobukiBase()
+        self.collection_mechanism = SerialMotor()
+        motor_connected = self.collection_mechanism.Connect()
+        
+        print('Motor Connected: %s' % motor_connected)
+        
+        # declare the trash detector after a delay to ensure that everything
+        # else has received at least one frame of data before yolo detects
+        # trash and expects everything to be initialized
+        rospy.sleep(0.1)
+        self.trash_detector = TrashYoloSubscriber(self.TrashDetected)
 
     def TrashDetected(self, trash_data):
         
@@ -92,9 +99,32 @@ class TrashBot():
                     closest_stamp = timestamp
                     closest_pose = pose
                     smallest_difference = time_difference
-            
+ 
         reference_z = closest_pose.orientation.z 
         destination_angle = find_destination_z(closest_piece.x, reference_z)
+
+        closest_image = None
+        closest_stamp = None
+        smallest_difference = None
+
+        # Find the distance that the trash is away from us by cross-referencing the yolo timestamp
+        # with the depth image timestamp
+        for (timestamp, image) in self.depth_camera.depth_history:
+            time_difference = abs(yolo_stamp - timestamp)
+
+            if closest_stamp == None:
+                closest_stamp = timestamp
+                closest_image = image
+                smallest_difference = time_difference
+                continue
+            else:
+                if time_difference < smallest_difference:
+                    closest_stamp = timestamp
+                    closest_image = image
+                    smallest_difference = time_difference
+
+        # distance_away = closest_image[closest_piece.y][closest_piece.x] # meters, unadjusted for angle
+	distance_away = self.depth_camera.get_depth_at_pixel(closest_image, closest_piece.x, closest_piece.y)
 
         print('Attempting to turn to destination angle %f' % destination_angle)
 
@@ -103,53 +133,15 @@ class TrashBot():
         print('Starting the Collection Mechanism')
         self.collection_mechanism.StartMotor()
 
-        print('sleeping for 10 seconds...')
-        rospy.sleep(10)
+        print('Trash is %3f m away, attempting to attack' % distance_away)
+        self.kobuki_base.move(distance_away)
         
         print('Stopping the Collection Mechanism')
         self.collection_mechanism.StopMotor()
 
         self.locked_on.release() 
         print('locked off')        
-        '''
-        # Now that we've isolated the closest piece, lets figure out which
-        # way to turn
-        center_x = self.trash_detector.frame_width // 2
 
-        # how much can we can miss the center on either side percentage
-        margin_of_error = 0.05
-        
-        # define bounds of the window which we deem in the center
-        window_left = center_x - (margin_of_error * float(center_x))
-        window_right = center_x + (margin_of_error * float(center_x))
-        
-        # if trash left:
-        if closest_piece.x <= window_left:
-            # turn left
-            print('attempting to turn left')
-            self.kobuki_base.stop()
-            self.kobuki_base.spin_async(self.angular_speed)
-        # elif trash right:
-        elif closest_piece.x >= window_right:
-            # turn right
-            print('attempting to turn right')
-            self.kobuki_base.stop()
-            self.kobuki_base.spin_async(-1 * self.angular_speed)
-        # else IT MUST BE IN MIDDLE
-        else:
-            # firstly, stop rotating
-            print('attempting to attack da trash')
-            self.kobuki_base.stop()
-
-            # secondly, start the motor
-            #self.collection_mechanism.StartMotor()
-
-            # thirdly, move forward one meter
-            #self.move_forward(1, self.linear_speed)
-
-            # fourthly, turn off the collection mechanism
-            #self.collection_mechanism.StopMotor()
-        '''
 
 
 if __name__ == '__main__':

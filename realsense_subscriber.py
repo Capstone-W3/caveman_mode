@@ -38,7 +38,10 @@ class RealsenseSubscriber():
 
 
     def get_depth_at_pixel(self, image_array, pixel_x, pixel_y):
-        return image_array[pixel_y][pixel_x] # convert from mm to m
+	raw_depth = image_array[pixel_y][pixel_x]
+	corrected_depth = float(raw_depth) * 0.001
+	print('Depth at (%f, %f) is %f %f' % (pixel_x, pixel_y, raw_depth, corrected_depth))        
+	return corrected_depth # convert from mm to m
 
 if __name__ == '__main__':
     r = RealsenseSubscriber(True)
