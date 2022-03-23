@@ -100,9 +100,6 @@ class TrashBot():
                     closest_pose = pose
                     smallest_difference = time_difference
  
-        reference_z = closest_pose.orientation.z 
-        destination_angle = find_destination_z(closest_piece.x, reference_z)
-
         closest_image = None
         closest_stamp = None
         smallest_difference = None
@@ -126,12 +123,18 @@ class TrashBot():
         # distance_away = closest_image[closest_piece.y][closest_piece.x] # meters, unadjusted for angle
 	distance_away = self.depth_camera.get_depth_at_pixel(closest_image, closest_piece.x, closest_piece.y)
 
+        reference_z = closest_pose.orientation.z 
+        destination_angle = find_destination_z(closest_piece.x, reference_z, distance_away)
+        
         print('Attempting to turn to destination angle %f' % destination_angle)
 
         self.kobuki_base.turn_to_angle(destination_angle)
 
         print('Starting the Collection Mechanism')
         self.collection_mechanism.StartMotor()
+
+	# sleeping for half a second here gives the motor time to spin up to max speed	
+	rospy.sleep(0.5)
 
         print('Trash is %3f m away, attempting to attack' % distance_away)
         self.kobuki_base.move(distance_away)

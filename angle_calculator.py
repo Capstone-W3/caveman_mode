@@ -9,14 +9,13 @@ frame_width = 640 # pixels
 camera_fov = 69.4 # degrees
 half_fov = camera_fov / 2.0
 leg_length = 462.139 # leg length between center of  frame and camera
+camera_kobuki_distance = 0.6096 # meters between kobuki and camera
 
 
-def find_destination_z(pixel_x, reference_z):
+def find_destination_z(pixel_x, reference_z, distance_from_camera):
     # left is positive in terms of z angle
 
-    # returns relative angle between pixel_x and camera in units of
-    # pi * radians, which is what the turtlebot's rotation odometry
-    # uses
+    # returns relative angle between pixel_x and camera in units of radians
     def angle_to_turn(pixel_x):
         
         theta_degrees = 0
@@ -38,11 +37,44 @@ def find_destination_z(pixel_x, reference_z):
 
         theta_kobuki = theta_radians / math.pi
 
-        return theta_kobuki
+        return theta_radians
 
-    angle_to_move = angle_to_turn(pixel_x)
+    angle_relative_to_camera = angle_to_turn(pixel_x)
 
-    destination_z = reference_z + angle_to_move
+    # beta is the angle between the leg spanning the distance from the camera
+    # to the trash and the leg between the camera and the center of the kobuki
+    beta = math.pi - abs(angle_relative_to_camera)
+
+    # since we have the distance from the camera to the trash, the distance from
+    # the kobuki to the camera, and the angle between these legs, we can use
+    # the side-angle-side trigonometric theorem and then the law of sins
+    # to find the angle between the trash and the kobuki
+    # math explanation below
+    # we are solving for side c first, the leg between the kobuki and the trash piece
+    # a => camera_kobuki_distance
+    # b => distance_from_camera
+    # c^2 = a^2 + b^2 - 2ab*cos(beta)
+    c = math.sqrt(camera_kobuki_distance**2 + distance_from_camera**2 - (2 * camera_kobuki_distance * distance_from_camera * math.cos(beta)))
+
+    # we can now use the law of sins to find the angle between trash and kobuki
+    # sin(relative_to_kobuki)/distance_from_camera = sin(beta)/c
+    # sin(relative_to_kobuki) = (distance_from_camera * sin(beta))/c
+    # relative_to_kobuki = sin^-1((distance_from_camera*sin(beta)))/c
+    to_be_arcsined = (distance_from_camera * math.sin(beta)) / c
+    relative_to_kobuki = math.asin(to_be_arcsined)
+
+    # remember to negate the angle relative to the kobuki if the angle relative to the
+    # camera is negative
+    if angle_relative_to_camera < 0:
+        relative_to_kobuki = -1 * relative_to_kobuki
+    
+    # adjust to units of pi * radians
+    relative_to_kobuki_normalized = relative_to_kobuki / math.pi
+    
+    destination_z = reference_z + relative_to_kobuki_normalized
+
+
+    
 
     # since angles are in terms of pi * radians,
     # adding or subtracting 2 (2pi) gets the same angle
@@ -86,11 +118,10 @@ def distance_between_points(x1, y1, x2, y2):
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 if __name__ == '__main__':
-    xs = [i for i in range(frame_width)]
-    angle_dict = {}
-
-    for pixel in xs:
-        angle_dict[pixel] = angle_to_turn(pixel)
-
-    for key in angle_dict:
-        print('X: %i, Angle: %f' % (key, angle_dict[key]))
+    print('Simulating a trash found at pixel_x = 400 1m away, reference_z = 0')
+    print('Angle relative to kobuki: %f' % find_destination_z(400, 0.00, 1.00))
+    print('Simulating a trash found at pixel_x = 400 1m away, reference_z = 0.5')
+    print('Angle relative to kobuki: %f' % find_destination_z(400, 0.5, 1.00))
+    print('Simulating a trash found at pixel_x = 100 1m away, reference_z = 0')
+    print('Angle relative to kobuki: %f' % find_destination_z(100, 0.00, 1.00))
+    
