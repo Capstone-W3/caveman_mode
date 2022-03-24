@@ -36,6 +36,9 @@ class TrashBot():
         rospy.sleep(0.1)
         self.trash_detector = TrashYoloSubscriber(self.TrashDetected)
 
+        # publisher that tells if we are listening to yolo or not
+        self.active_publisher = rospy.Publisher('/trash_bot_active', Bool, queue_size=1)
+
     def TrashDetected(self, trash_data):
         
         if (self.locked_on.locked()):
@@ -147,16 +150,27 @@ class TrashBot():
         
         print('Stopping the Collection Mechanism')
         self.collection_mechanism.StopMotor()
+        
+        # Stop listening to YOLO now that we've reached
+        self.ShutDown()
 
         self.locked_on.release() 
         print('locked off')
 
+
     def StartUp(self):
+        active_message = Bool()
+        active_message.data = True
+        self.active_publisher.publish(active_message)
         self.respond_to_trash = True
 
     def ShutDown(self):
+        active_message = Bool()
+        active_message.data = False
+        self.active_publisher.publish(active_message)
         self.kobuki_base.stop()
         self.respond_to_trash = False
+        
 
 if __name__ == '__main__':
     t = TrashBot()
