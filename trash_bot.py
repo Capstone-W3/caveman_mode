@@ -39,6 +39,9 @@ class TrashBot():
         # publisher that tells if we are listening to yolo or not
         self.active_publisher = rospy.Publisher('/trash_bot_active', Bool, queue_size=1)
 
+        # how far to overshoot the destination when roving forward to pick up trash
+        self.overshoot_distance = 0.305 # meters
+
     def TrashDetected(self, trash_data):
         
         if (self.locked_on.locked()):
@@ -145,8 +148,8 @@ class TrashBot():
         # sleeping for half a second here gives the motor time to spin up to max speed	
         rospy.sleep(0.5)
 
-        print('Trash is %3f m away, attempting to attack' % distance_away)
-        self.kobuki_base.move(distance_away)
+        print('Trash is %3f m away and I want to overshoot %f m, attempting to attack' % (distance_away, self.overshoot_distance))
+        self.kobuki_base.move(distance_away + self.overshoot_distance)
         
         print('Stopping the Collection Mechanism')
         self.collection_mechanism.StopMotor()
