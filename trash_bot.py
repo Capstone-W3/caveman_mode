@@ -5,6 +5,7 @@ from yolo_subscriber import *
 from serial_motor import *
 from angle_calculator import *
 from realsense_subscriber import *
+from image_controller import *
 import threading
 import time
 
@@ -27,6 +28,7 @@ class TrashBot():
         self.kobuki_base = KobukiBase()
         self.collection_mechanism = SerialMotor()
         motor_connected = self.collection_mechanism.Connect()
+        self.republisher = ImageController()
         
         print('Motor Connected: %s' % motor_connected)
         
@@ -44,11 +46,11 @@ class TrashBot():
 
     def TrashDetected(self, trash_data):
         
-        if (self.locked_on.locked()):
-            print('already locked on, ignoring found trash')
-            return
-        elif (not self.respond_to_trash):
+        if (not self.respond_to_trash):
             print('Found trash but I\'m not started up')
+            return
+        elif (self.locked_on.locked()):
+            print('already locked on, ignoring found trash')
             return
         
         print("Detected Trash!")
