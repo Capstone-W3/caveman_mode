@@ -144,7 +144,7 @@ class KobukiBase():
 
             velocity_val = (self.kP * err) + ((last_err - err) / dt) * self.kD
             
-            min_turning_speed = 0.4
+            min_turning_speed = 0.5
 
             if velocity_val > 0:
                 velocity_val = max(velocity_val, min_turning_speed)
@@ -234,7 +234,7 @@ class KobukiBase():
                 velocity_val = min(velocity_val, -1 * min_movement_speed)
                 velocity_val = max(velocity_val, -1 * max_movement_speed)
 
-            print('distance moved: %f, error: %f, velocity: %f m/s' % (distance_traveled, err, velocity_val))
+            # print('distance moved: %f, error: %f, velocity: %f m/s' % (distance_traveled, err, velocity_val))
 
             move_cmd.linear.x = velocity_val
             self.cmd_vel.publish(move_cmd)

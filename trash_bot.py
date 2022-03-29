@@ -164,12 +164,14 @@ class TrashBot():
 
 
     def StartUp(self):
+        print('TrashBot StartUp()')
         active_message = Bool()
         active_message.data = True
         self.active_publisher.publish(active_message)
         self.respond_to_trash = True
 
     def ShutDown(self):
+        print('TrashBot ShutDown()')
         active_message = Bool()
         active_message.data = False
         self.active_publisher.publish(active_message)

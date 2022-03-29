@@ -24,12 +24,12 @@ SUBSCRIBED TOPICS:
 '''
 
 class ImageController:
-    def __init__(self, init_node = False):
+    def __init__(self, init_node = False, default_value = False):
         if init_node:
             rospy.init_node('image_controller')
 
         # are we republishing images?
-        self.republishing = False
+        self.republishing = default_value
 
         # PUBLISHERS
         self.republisher = rospy.Publisher('/image_controller/republisher', Image, queue_size=1)
@@ -52,9 +52,14 @@ class ImageController:
                 self.republisher.publish(data)
 
     def TrashBotActiveReceivedEvent(self, data):
+        print 'Image Controller Republishing Status: ',
+        if data.data:
+            print('Republishing')
+        else:
+            print('Waiting')
         self.republishing = data.data
 
 if __name__ == '__main__':
-    i = ImageController(True)
+    i = ImageController(True, True)
     while True:
         continue
