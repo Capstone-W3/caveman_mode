@@ -44,6 +44,9 @@ class TrashBot():
         # how far to overshoot the destination when roving forward to pick up trash
         self.overshoot_distance = 0.305 # meters
 
+        # delay 3 seconds to give everything time to bring up
+        rospy.sleep(3)
+
     def TrashDetected(self, trash_data):
         
         if (not self.respond_to_trash):
@@ -80,6 +83,10 @@ class TrashBot():
             self.locked_on.acquire()
         else:
             return
+
+        # tell image_controller to stop republishing and also stop listening to
+        # any further images received from yolo is there is a backlog
+        self.StopListeningToYolo()
  
         print('Closest piece is at (%i, %i)' % (closest_piece.x, closest_piece.y))
         print('Locked on: %s' % self.locked_on.locked())
@@ -162,21 +169,34 @@ class TrashBot():
         self.locked_on.release() 
         print('locked off')
 
-
-    def StartUp(self):
-        print('TrashBot StartUp()')
+    # sends a message to image_controller to start feeding yolo data
+    # also sets self.respond_to_trash to true
+    def ListenToYolo(self): 
         active_message = Bool()
         active_message.data = True
         self.active_publisher.publish(active_message)
         self.respond_to_trash = True
 
-    def ShutDown(self):
-        print('TrashBot ShutDown()')
+    # stop listening to yolo and tell image controller to shut up and not
+    # republish any more images
+    def StopListeningToYolo(self): 
         active_message = Bool()
         active_message.data = False
         self.active_publisher.publish(active_message)
-        self.kobuki_base.stop()
         self.respond_to_trash = False
+
+    # Start up the bot and start listening to YOLO
+    def StartUp(self):
+        self.running = True
+        self.StartListeningToYolo()
+        print('TrashBot StartUp()')
+
+    # Stop the trash bot and stop listening to any inputs
+    def ShutDown(self):
+        self.running = False
+        self.StopListeningToYolo()
+        self.kobuki_base.stop()
+        print('TrashBot ShutDown()')
         
 
 if __name__ == '__main__':
