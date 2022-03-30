@@ -16,6 +16,9 @@ class TrashBot():
         # if this is set to true, it will start responding to trash 
         # it sees in the environment via the YOLO subscriber
         self.respond_to_trash = False
+
+        # are we started up?
+        self.running = False
         
         self.linear_speed = 0.4 # m/s
         # note: angular velocity direction is positive => counter clockwise
@@ -171,7 +174,7 @@ class TrashBot():
 
     # sends a message to image_controller to start feeding yolo data
     # also sets self.respond_to_trash to true
-    def ListenToYolo(self): 
+    def StartListeningToYolo(self): 
         active_message = Bool()
         active_message.data = True
         self.active_publisher.publish(active_message)
