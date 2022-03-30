@@ -124,10 +124,18 @@ class KobukiBase():
         start_z = self.pose_with_covariance.pose.orientation.z
         print('turn_to_angle start_z: %f destination_z: %f' % (start_z, destination_z))
 
+
+
         if (self.moving):
             return
         
         self.moving = True
+        
+        # These variables track if we need to overlap over the -1/1 angle boundary
+        # in the course of our turn on on the shortest path
+        overlap_cw = False
+        overlap_ccw = False
+        
 
         command= Twist()
         polling_rate = 10.0 # Hz
@@ -138,10 +146,32 @@ class KobukiBase():
         last_err = 0
 
         while time_run < self.movement_timeout and not within_plus_or_minus(self.pose_with_covariance.pose.orientation.z, destination_z, self.angular_error) and self.moving:
+            
             time_run += dt
-
-            err = destination_z - self.pose_with_covariance.pose.orientation.z
-
+            curr_z = self.pose_with_covariance.pose.orientation.z
+            
+            # if the start and destination are in quadrants 2 and 3
+            if (curr_z > 0.5) and (destination_z < -0.5):
+                # move COUNTER CLOCKWISE
+                overlap_ccw = True
+            elif (curr_z < -0.5) and (destination_z > 0.5):
+                # move CLOCKWISE
+                overlap_cw = True
+            else:
+                overlap_cw = False
+                overlap_ccw = False
+        
+            if overlap_cw:
+                # error is the absolute distance between the two angles * -1
+                # to get this get the distance to the -1/1 boundary for each and add
+                # then multiply by -1 to make sure the velocity is negative since
+                # we need to be turning clockwise
+                err = ((1 + curr_z) + (1 - destination_z)) * -1
+            elif overlap_ccw:
+                err = (1 - curr_z) + (1 + destination_z)
+            else:
+                err = destination_z - curr_z
+            
             velocity_val = (self.kP * err) + ((last_err - err) / dt) * self.kD
             
             min_turning_speed = 0.5
