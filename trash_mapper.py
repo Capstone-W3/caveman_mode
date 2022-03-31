@@ -13,7 +13,7 @@ class TrashMapper():
         
         self.kobuki_base = KobukiBase()
         self.yolo_subscriber = TrashYoloSubscriber(self.TrashDetected)
-        self.image_controller = ImageController(False, False)
+        # self.image_controller = ImageController(False, False)
         self.depth_camera = RealsenseSubscriber()
 
         # are we responding to trash

@@ -10,8 +10,9 @@ import threading
 import time
 
 class TrashBot():
-    def __init__(self):
-        rospy.init_node('trash_bot')
+    def __init__(self, init_node = False):
+        if init_node:
+            rospy.init_node('trash_bot')
 
         # if this is set to true, it will start responding to trash 
         # it sees in the environment via the YOLO subscriber
@@ -31,7 +32,7 @@ class TrashBot():
         self.kobuki_base = KobukiBase()
         self.collection_mechanism = SerialMotor()
         motor_connected = self.collection_mechanism.Connect()
-        self.republisher = ImageController()
+        #self.republisher = ImageController()
         
         print('Motor Connected: %s' % motor_connected)
         

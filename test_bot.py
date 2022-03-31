@@ -2,8 +2,7 @@ from trash_bot import *
 import rospy
 
 if __name__ == '__main__':
-    t = TrashBot()
-
+    t = TrashBot(True)
 
     # start up the trashbot and pay attention to YOLO
     t.StartUp()
