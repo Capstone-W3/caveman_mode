@@ -33,7 +33,6 @@ class TrashMapper():
             print('Found trash but I\'m not supposed to be looking')
             return
 
-        print('Trash Detected!')
 
         # keep track of all the pieces we are confident about
         confident_pieces = []
@@ -42,6 +41,10 @@ class TrashMapper():
             if item.confidence > self.confidence_threshold:
                 confident_pieces.append(item)
 
+        if len(confident_pieces) > 0:
+            print('Trash Detected!')
+        else:
+            return
 
         # find our reference Z at the time the picture was taken
         reference_z = 0
