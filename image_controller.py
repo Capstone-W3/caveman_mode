@@ -52,7 +52,7 @@ class ImageController:
                 self.republisher.publish(data)
 
     def TrashBotActiveReceivedEvent(self, data):
-        print 'Image Controller Republishing Status: ',
+        print 'ImageController: Republishing Status: ',
         if data.data:
             print('Republishing')
         else:

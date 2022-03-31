@@ -54,14 +54,11 @@ class TrashBot():
     def TrashDetected(self, trash_data):
         
         if (not self.respond_to_trash):
-            print('Found trash but I\'m not started up')
+            print('TrashBot: Found trash but I\'m not started up')
             return
         elif (self.locked_on.locked()):
-            print('already locked on, ignoring found trash')
+            print('TrashBot: already locked on, ignoring found trash')
             return
-        
-        print("Detected Trash!")
-        # print(type(trash_data))
 
         # isolate the closest piece of trash
         closest_piece = trash_data[0]
@@ -78,8 +75,10 @@ class TrashBot():
         # if we aren't confident, stop the turtlebot and do nothing
         if closest_piece.confidence < self.confidence_threshold:
             self.kobuki_base.stop()
-            print('unconfident, not moving')
+            print('TrashBot: Unconfident, not moving')
             return
+
+        print("TrashBot: Detected Trash!")
 
         # If we aren't locked on, acquire the lock so two trash pieces aren't
         # locked onto simultaneously
@@ -92,8 +91,8 @@ class TrashBot():
         # any further images received from yolo is there is a backlog
         self.StopListeningToYolo()
  
-        print('Closest piece is at (%i, %i)' % (closest_piece.x, closest_piece.y))
-        print('Locked on: %s' % self.locked_on.locked())
+        print('TrashBot: Closest piece is at (%i, %i)' % (closest_piece.x, closest_piece.y))
+        print('TrashBot: Locked on: %s' % self.locked_on.locked())
 
         # find our reference Z at the time the picture was taken
         reference_z = 0
@@ -151,27 +150,27 @@ class TrashBot():
         reference_z = closest_pose.orientation.z 
         (destination_angle, distance_from_base) = find_destination_z(closest_piece.x, reference_z, distance_away)
         
-        print('Attempting to turn to destination angle %f' % destination_angle)
+        print('TrashBot: Attempting to turn to destination angle %f' % destination_angle)
 
         self.kobuki_base.turn_to_angle(destination_angle)
 
-        print('Starting the Collection Mechanism')
+        print('TrashBot: Starting the Collection Mechanism')
         self.collection_mechanism.StartMotor()
 
         # sleeping for half a second here gives the motor time to spin up to max speed	
         rospy.sleep(0.5)
 
-        print('Trash is %3f m away and I want to overshoot %f m, attempting to attack' % (distance_away, self.overshoot_distance))
+        print('TrashBot: Trash is %3f m away and I want to overshoot %f m, attempting to attack' % (distance_away, self.overshoot_distance))
         self.kobuki_base.move(distance_away + self.overshoot_distance)
         
-        print('Stopping the Collection Mechanism')
+        print('TrashBot: Stopping the Collection Mechanism')
         self.collection_mechanism.StopMotor()
         
         # Stop listening to YOLO now that we've reached
         self.ShutDown()
 
         self.locked_on.release() 
-        print('locked off')
+        print('TrashBot: Locked off')
 
     # sends a message to image_controller to start feeding yolo data
     # also sets self.respond_to_trash to true
@@ -193,14 +192,14 @@ class TrashBot():
     def StartUp(self):
         self.running = True
         self.StartListeningToYolo()
-        print('TrashBot StartUp()')
+        print('TrashBot: StartUp()')
 
     # Stop the trash bot and stop listening to any inputs
     def ShutDown(self):
         self.running = False
         self.StopListeningToYolo()
         self.kobuki_base.stop()
-        print('TrashBot ShutDown()')
+        print('TrashBot: ShutDown()')
         
 
 if __name__ == '__main__':

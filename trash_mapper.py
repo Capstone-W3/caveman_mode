@@ -30,7 +30,7 @@ class TrashMapper():
 	
     def TrashDetected(self, trash_data):
         if (not self.respond_to_trash):
-            print('Found trash but I\'m not supposed to be looking')
+            print('TrashMapper: Found trash but I\'m not supposed to be looking')
             return
 
 
@@ -42,7 +42,7 @@ class TrashMapper():
                 confident_pieces.append(item)
 
         if len(confident_pieces) > 0:
-            print('Trash Detected!')
+            print('TrashMapper: Trash Detected!')
         else:
             return
 
