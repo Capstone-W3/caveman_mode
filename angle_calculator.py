@@ -86,7 +86,7 @@ def find_destination_z(pixel_x, reference_z, distance_from_camera):
     else:
         final_destination = destination_z
 
-    return final_destination
+    return (final_destination, c)
 
 
 def angle_is_between(input_z, bound_cw, bound_ccw):
@@ -119,9 +119,5 @@ def distance_between_points(x1, y1, x2, y2):
 
 if __name__ == '__main__':
     print('Simulating a trash found at pixel_x = 400 1m away, reference_z = 0')
-    print('Angle relative to kobuki: %f' % find_destination_z(400, 0.00, 1.00))
-    print('Simulating a trash found at pixel_x = 400 1m away, reference_z = 0.5')
-    print('Angle relative to kobuki: %f' % find_destination_z(400, 0.5, 1.00))
-    print('Simulating a trash found at pixel_x = 100 1m away, reference_z = 0')
-    print('Angle relative to kobuki: %f' % find_destination_z(100, 0.00, 1.00))
+    print('Angle relative to world and distance from base: %s' % find_destination_z(400, 0.00, 1.00))
     

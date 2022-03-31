@@ -7,8 +7,10 @@ import rospy
 import math
 
 class TrashMapper():
-    def __init__(self):
-        rospy.init_node('trash_mapper')
+    def __init__(self, init_node = False):
+        if init_node:
+            rospy.init_node('trash_mapper')
+        
         self.kobuki_base = KobukiBase()
         self.yolo_subscriber = TrashYoloSubscriber(self.TrashDetected)
         self.image_controller = ImageController(False, False)
@@ -19,13 +21,12 @@ class TrashMapper():
 
         # publisher that tells if we want to listen to yolo or not
         self.active_publisher = rospy.Publisher('/trash_bot_active', Bool, queue_size=1)
-
+        
+        # publisher that publishes trash poses in the world when we detect one
+        self.trash_point_publisher = rospy.Publisher('/trash_mapper/trash_points', Pose, queue_size=1)
+        
         # how confident do we need to be
         self.confidence_threshold = 0.85
-
-        # keep track of the points as we find them
-        self.trash_points = []
-
 	
     def TrashDetected(self, trash_data):
         if (not self.respond_to_trash):
@@ -103,18 +104,21 @@ class TrashMapper():
         for piece in confident_pieces:
             # get the exact distance away from us and the angle relative to the bot
             distance_away = self.depth_camera.get_depth_at_pixel(closest_image, piece.x, piece.y)
-            angle_from_bot_location = find_destination_z(piece.x, reference_z, distance_away)
+            
+            
+            
+            (angle_from_bot_location, distance_from_base) = find_destination_z(piece.x, reference_z, distance_away)
             
             angle_radians = angle_from_bot_location * math.pi
 
-            trash_x = bot_x + (distance_away * math.cos(angle_radians))
-            trash_y = bot_y + (distance_away * math.sin(angle_radians))
+            trash_x = bot_x + (distance_from_base * math.cos(angle_radians))
+            trash_y = bot_y + (distance_from_base * math.sin(angle_radians))
             
-            self.trash_points.append((trash_x, trash_y))
-
-        print('-----------------MAPPED TRASH POINTS-----------------')
-        print(self.trash_points)
-            
+            # self.trash_points.append((trash_x, trash_y))
+            trash_point = Pose()
+            trash_point.position.x = trash_x
+            trash_point.position.y = trash_y
+            self.trash_point_publisher.publish(trash_point)
 
     # sends a message to image_controller to start feeding yolo data
     # also sets self.respond_to_trash to true
@@ -134,7 +138,7 @@ class TrashMapper():
 
 
 if __name__ == '__main__':
-    mapper = TrashMapper()
+    mapper = TrashMapper(True)
     rospy.sleep(3)
     mapper.StartListeningToYolo()
 

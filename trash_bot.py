@@ -148,7 +148,7 @@ class TrashBot():
         distance_away = self.depth_camera.get_depth_at_pixel(closest_image, closest_piece.x, closest_piece.y)
 
         reference_z = closest_pose.orientation.z 
-        destination_angle = find_destination_z(closest_piece.x, reference_z, distance_away)
+        (destination_angle, distance_from_base) = find_destination_z(closest_piece.x, reference_z, distance_away)
         
         print('Attempting to turn to destination angle %f' % destination_angle)
 
