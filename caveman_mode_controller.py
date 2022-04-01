@@ -1,5 +1,6 @@
 from trash_bot import *
 from trash_mapper import *
+from anti_cluster import *
 import rospy
 
 # Controls caveman mode modes
@@ -9,9 +10,10 @@ class ModeController():
         if init_node:
             rospy.init_node('caveman_mode_controller')
 
-	    self.image_controller = ImageController(False, False)
+	self.image_controller = ImageController(False, False)
         self.trash_bot = TrashBot()
         self.trash_mapper = TrashMapper()
+        self.anti_cluster = AntiCluster(0.2,0.2, False)
 
     def StartMapper(self):
         print("ModeController: Starting Mapper")
@@ -21,6 +23,7 @@ class ModeController():
     def StopMapper(self):
         print("ModeController: Stopping Mapper")
         self.trash_mapper.StopListeningToYolo()
+        print('Mapped Points (anti-clustered):' % self.anti_cluster.listOfPoints)
 
     def StartTrashBot(self):
         print("ModeController: Starting TrashBot")
