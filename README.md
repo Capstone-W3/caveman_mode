@@ -17,7 +17,7 @@ Right now I just interface with ModeController in the python terminal
 
 `python`
 
-`> from mode_controller import *`
+`> from caveman_mode_controller import *`
 
 `> m = ModeController(True)`
 
