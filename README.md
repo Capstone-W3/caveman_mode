@@ -15,6 +15,8 @@ Open new terminal window and source the darknet workspace for yolo messages
 
 Right now I just interface with ModeController in the python terminal
 
+`cd ~/caveman_mode`
+
 `python`
 
 `> from caveman_mode_controller import *`
