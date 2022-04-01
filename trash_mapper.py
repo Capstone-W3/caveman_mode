@@ -3,6 +3,7 @@ from angle_calculator import *
 from realsense_subscriber import *
 from yolo_subscriber import *
 from kobuki_base import *
+from nav_msgs.msg import *
 import rospy
 import math
 
@@ -11,7 +12,7 @@ class TrashMapper():
         if init_node:
             rospy.init_node('trash_mapper')
         
-        self.kobuki_base = KobukiBase()
+        # self.kobuki_base = KobukiBase()
         self.yolo_subscriber = TrashYoloSubscriber(self.TrashDetected)
         # self.image_controller = ImageController(False, False)
         self.depth_camera = RealsenseSubscriber()
@@ -27,12 +28,24 @@ class TrashMapper():
         
         # how confident do we need to be
         self.confidence_threshold = 0.85
-	
+
+        # subscriber to orbslam path topic
+        rospy.Subscriber('/cam_path', Path, self.OrbslamPathReceivedEvent)
+
+        # Path that the bot has traveled.
+        # List of PoseStamped
+        self.path = []
+
+    # update our local path every time orbslammyboi gives us an update of where
+    # in the world he's been
+    def OrbslamPathReceivedEvent(self, orb_path):
+        print('TrashMapper: Received ORBSLAM path with %i poses' % len(orb_path.poses))
+        self.path = orb_path.poses
+
     def TrashDetected(self, trash_data):
         if (not self.respond_to_trash):
             print('TrashMapper: Found trash but I\'m not supposed to be looking')
             return
-
 
         # keep track of all the pieces we are confident about
         confident_pieces = []
@@ -53,8 +66,12 @@ class TrashMapper():
         # with that type
         yolo_stamp = trash_data[0].timestamp
 
+        # This generates points based on odometry and is replaced with ORBSLAM
+        # map position data
+        '''
+
         closest_pose = None
-        closest_stamp = None
+        closest_odom_stamp = None
         smallest_difference = None
 
         # right now this scans through all of them, make it stop in future when it finds a good
@@ -65,17 +82,40 @@ class TrashMapper():
             
             time_difference = abs(yolo_stamp - timestamp)
 
-            if closest_stamp == None:
-                closest_stamp = timestamp
+            if closest_odom_stamp == None:
+                closest_odom_stamp = timestamp
                 closest_pose = pose
                 smallest_difference = time_difference
                 continue
             else:
                 if time_difference < smallest_difference:
-                    closest_stamp = timestamp
+                    closest_odom_stamp = timestamp
                     closest_pose = pose
                     smallest_difference = time_difference
  
+        '''
+
+        closest_pose = None
+        closest_stamp = None
+        smallest_difference = None
+
+        # get the pose closest to the yolo timestamp in the path vector that we
+        # store from ORBSLAMMYBOI
+        for pose_stamped in self.path:
+            
+            time_difference = abs(yolo_stamp - pose_stamped.stamp)
+
+            if closest_stamp == None:
+                closest_stamp = pose_stamped.stamp
+                closest_pose = pose_stamped.pose
+                smallest_difference = time_difference
+                continue
+            else:
+                if time_difference < smallest_difference:
+                    closest_stamp = pose_stamped.stamp
+                    closest_pose = pose_stamped.pose
+                    smallest_difference = time_difference
+
         closest_image = None
         closest_stamp = None
         smallest_difference = None
@@ -100,15 +140,19 @@ class TrashMapper():
         reference_z = closest_pose.orientation.z
 
         # position of the bot (REPLACE THIS WITH ODOM AND TRANSFORM FUNNINESS)
-        bot_x = closest_pose.position.x
-        bot_y = closest_pose.position.y
+        #listener = tf.transformListener();
+        #pos, quat = listener.lookupTransform("odom", "map", closest_odom_stamp)
+        #print('pos', pos)
+        #print('quat',quat)
+        
+        # These are based on odometry, replaced with ORBSLAM map position
+        #bot_x = closest_pose.position.x
+        #bot_y = closest_pose.position.y
 
         # find the map location of each piece and add it to self.trash_points
         for piece in confident_pieces:
             # get the exact distance away from us and the angle relative to the bot
             distance_away = self.depth_camera.get_depth_at_pixel(closest_image, piece.x, piece.y)
-            
-            
             
             (angle_from_bot_location, distance_from_base) = find_destination_z(piece.x, reference_z, distance_away)
             
