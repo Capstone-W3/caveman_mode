@@ -4,6 +4,7 @@ from realsense_subscriber import *
 from yolo_subscriber import *
 from kobuki_base import *
 from nav_msgs.msg import *
+from geometry_msgs.msg import *
 import rospy
 import math
 
@@ -24,7 +25,7 @@ class TrashMapper():
         self.active_publisher = rospy.Publisher('/trash_bot_active', Bool, queue_size=1)
         
         # publisher that publishes trash poses in the world when we detect one
-        self.trash_point_publisher = rospy.Publisher('/trash_mapper/trash_points', Pose, queue_size=1)
+        self.trash_point_publisher = rospy.Publisher('/trash_mapper/trash_points', PoseStamped, queue_size=1)
         
         # how confident do we need to be
         self.confidence_threshold = 0.85
@@ -98,22 +99,27 @@ class TrashMapper():
         closest_pose = None
         closest_stamp = None
         smallest_difference = None
+        closest_header = None
 
         # get the pose closest to the yolo timestamp in the path vector that we
         # store from ORBSLAMMYBOI
         for pose_stamped in self.path:
+
+            orb_stamp = pose_stamped.header.stamp
             
-            time_difference = abs(yolo_stamp - pose_stamped.stamp)
+            time_difference = abs(yolo_stamp - orb_stamp)
 
             if closest_stamp == None:
-                closest_stamp = pose_stamped.stamp
+                closest_stamp = orb_stamp
                 closest_pose = pose_stamped.pose
+                closest_header = pose_stamped.header
                 smallest_difference = time_difference
                 continue
             else:
                 if time_difference < smallest_difference:
-                    closest_stamp = pose_stamped.stamp
+                    closest_stamp = orb_stamp
                     closest_pose = pose_stamped.pose
+                    closest_header = pose_stamped.header
                     smallest_difference = time_difference
 
         closest_image = None
@@ -149,6 +155,9 @@ class TrashMapper():
         #bot_x = closest_pose.position.x
         #bot_y = closest_pose.position.y
 
+        bot_x = closest_pose.position.x
+        bot_y = closest_pose.position.y
+        
         # find the map location of each piece and add it to self.trash_points
         for piece in confident_pieces:
             # get the exact distance away from us and the angle relative to the bot
@@ -162,9 +171,10 @@ class TrashMapper():
             trash_y = bot_y + (distance_from_base * math.sin(angle_radians))
             
             # self.trash_points.append((trash_x, trash_y))
-            trash_point = Pose()
-            trash_point.position.x = trash_x
-            trash_point.position.y = trash_y
+            trash_point = PoseStamped()
+            trash_point.pose.position.x = trash_x
+            trash_point.pose.position.y = trash_y
+            trash_point.header = closest_header
             self.trash_point_publisher.publish(trash_point)
 
     # sends a message to image_controller to start feeding yolo data

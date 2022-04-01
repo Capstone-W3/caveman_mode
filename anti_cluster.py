@@ -6,14 +6,22 @@ class AntiCluster:
         if init_node:
             rospy.init_node('aggregate_points')
 
-        rospy.Subscriber("/trash_mapper/trash_points", Pose, self.addPoint)
+        rospy.Subscriber("/trash_mapper/trash_points", PoseStamped, self.addPoint)
         self._XLENGTH_ = x  # m
         self._YLENGTH_ = y  # m
         self.listOfPoints = []
 
+        self.trash_points_publisher = rospy.Publisher('/trash_mapper/culled_trash_points', PoseArray, queue_size = 1)
+
     def addPoint(self, data):
-        self.listOfPoints.append(data)
+        self.listOfPoints.append(data.pose)
         self.listOfPoints = self.aggregatePoints(self.listOfPoints)
+
+        arr = PoseArray()
+        arr.header = data.header
+        arr.poses = self.listOfPoints
+        self.trash_points_publisher.publish(arr)
+
 	print('Points: %s' % self.listOfPoints)
 
     def aggregatePoints(self, points):
