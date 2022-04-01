@@ -28,7 +28,7 @@ class TrashMapper():
         self.trash_point_publisher = rospy.Publisher('/trash_mapper/trash_points', PoseStamped, queue_size=1)
         
         # how confident do we need to be
-        self.confidence_threshold = 0.85
+        self.confidence_threshold = 0.90
 
         # subscriber to orbslam path topic
         rospy.Subscriber('/cam_path', Path, self.OrbslamPathReceivedEvent)

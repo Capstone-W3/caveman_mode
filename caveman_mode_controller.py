@@ -13,7 +13,7 @@ class ModeController():
 	self.image_controller = ImageController(False, False)
         self.trash_bot = TrashBot()
         self.trash_mapper = TrashMapper()
-        self.anti_cluster = AntiCluster(0.2,0.2, False)
+        self.anti_cluster = AntiCluster(1.0,1.0, False)
 
     def StartMapper(self):
         print("ModeController: Starting Mapper")
