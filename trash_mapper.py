@@ -28,7 +28,7 @@ class TrashMapper():
         self.trash_point_publisher = rospy.Publisher('/trash_mapper/trash_points', PoseStamped, queue_size=1)
         
         # how confident do we need to be
-        self.confidence_threshold = 0.90
+        self.confidence_threshold = 0.95
 
         # subscriber to orbslam path topic
         rospy.Subscriber('/cam_path', Path, self.OrbslamPathReceivedEvent)
@@ -36,6 +36,15 @@ class TrashMapper():
         # Path that the bot has traveled.
         # List of PoseStamped
         self.path = []
+
+        # parameters that will determine window of mapping
+        self.min_x = 40
+        self.max_x = 600
+        self.min_y = 30
+        self.max_y = 450
+        self.max_distance = 3
+        # points will have to fall within these parameters for the mapper to publish
+        # the point
 
     # update our local path every time orbslammyboi gives us an update of where
     # in the world he's been
@@ -123,7 +132,7 @@ class TrashMapper():
                     closest_header = pose_stamped.header
                     smallest_difference = time_difference
 
-
+        '''
         print('#########################################################')
         print('YOLO_STAMP: %s ORB_STAMP: %s' % (yolo_stamp, orb_stamp))
         print('#########################################################')
@@ -131,6 +140,7 @@ class TrashMapper():
         print('#########################################################')
         pritn(self.path)
         print('#########################################################')
+        '''
 
         closest_image = None
         closest_stamp = None
@@ -185,11 +195,18 @@ class TrashMapper():
             trash_point.pose.position.x = trash_x
             trash_point.pose.position.y = trash_y
             trash_point.header = closest_header
-            self.trash_point_publisher.publish(trash_point)
 
-            print('Trash point Published!')
-            print('YOLO Timestamp: %s' % yolo_stamp)
-            print('Pose Timestamp %s' % orb_stamp)
+            if (trash_x > self.min_x and trash_x < self.max_x):
+                if (trash_y > self.min_y and trash_y < self.max_y):
+                    if (distance_from_base < self.max_distance):
+                        self.trash_point_publisher.publish(trash_point)
+
+                        print('Trash point Published!')
+                        print('YOLO Timestamp: %s' % yolo_stamp)
+                        print('Pose Timestamp %s' % orb_stamp)
+                        return
+
+            print('TrashMapper: Point lied out of bounds, not publishing')
 
     # sends a message to image_controller to start feeding yolo data
     # also sets self.respond_to_trash to true
