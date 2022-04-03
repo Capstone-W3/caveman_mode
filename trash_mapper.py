@@ -40,7 +40,7 @@ class TrashMapper():
     # update our local path every time orbslammyboi gives us an update of where
     # in the world he's been
     def OrbslamPathReceivedEvent(self, orb_path):
-        print('TrashMapper: Received ORBSLAM path with %i poses' % len(orb_path.poses))
+        #print('TrashMapper: Received ORBSLAM path with %i poses' % len(orb_path.poses))
         self.path = orb_path.poses
 
     def TrashDetected(self, trash_data):
@@ -100,6 +100,7 @@ class TrashMapper():
         closest_stamp = None
         smallest_difference = None
         closest_header = None
+        orb_stamp = None
 
         # get the pose closest to the yolo timestamp in the path vector that we
         # store from ORBSLAMMYBOI
@@ -121,6 +122,15 @@ class TrashMapper():
                     closest_pose = pose_stamped.pose
                     closest_header = pose_stamped.header
                     smallest_difference = time_difference
+
+
+        print('#########################################################')
+        print('YOLO_STAMP: %s ORB_STAMP: %s' % (yolo_stamp, orb_stamp))
+        print('#########################################################')
+        print('PATH VECTOR:')
+        print('#########################################################')
+        pritn(self.path)
+        print('#########################################################')
 
         closest_image = None
         closest_stamp = None
@@ -176,6 +186,10 @@ class TrashMapper():
             trash_point.pose.position.y = trash_y
             trash_point.header = closest_header
             self.trash_point_publisher.publish(trash_point)
+
+            print('Trash point Published!')
+            print('YOLO Timestamp: %s' % yolo_stamp)
+            print('Pose Timestamp %s' % orb_stamp)
 
     # sends a message to image_controller to start feeding yolo data
     # also sets self.respond_to_trash to true

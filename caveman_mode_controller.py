@@ -38,4 +38,10 @@ class ModeController():
         print("ModeController: Halting")
         self.trash_mapper.StopListeningToYolo()
         self.trash_bot.ShutDown()
-    
+
+if __name__ == '__main__':
+    m = ModeController(True)
+    rospy.sleep(3) # sleep 3s to let everything bring up
+    m.StartMapper()
+    while(True):
+        continue

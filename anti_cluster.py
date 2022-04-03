@@ -1,6 +1,6 @@
 from geometry_msgs.msg import *
 import rospy
-from collections import namedTuple
+# from collections import namedTuple
 
 class AntiCluster:
     def __init__(self, x, y, init_node=False):
@@ -11,29 +11,39 @@ class AntiCluster:
         self._XLENGTH_ = x  # m
         self._YLENGTH_ = y  # m
         self.listOfPoints = []
-        self.avgTrashPosesTuple : List[Tuple[Pose, int]] = []
-        self.avgTrashPoses : List[Pose] = []
+        self.avgTrashPosesTuple = []
+        self.avgTrashPoses = []
 
         self.trash_points_publisher = rospy.Publisher('/trash_mapper/culled_trash_points', PoseArray, queue_size = 1)
         self.trash_avg_points_publisher = rospy.Publisher('/trash_mapper/avg_culled_trash_points', PoseArray, queue_size = 1)
+        self.trash_detections_publisher = rospy.Publisher('/trash_mapper/trash_detections', PoseArray, queue_size=1)
 
     def addPoint(self, data):
         self.listOfPoints.append(data.pose)
-        self.listOfPoints = self.aggregatePoints(self.listOfPoints)
-        self.aggregatePoseAvg(data)
+        #self.culledPoints = self.aggregatePoints(self.listOfPoints)
+        self.aggregatePoseAvg(data.pose)
+        '''
+        arr = PoseArray()
+        arr.header = data.header
+        arr.poses = self.culledPoints
+        self.trash_points_publisher.publish(arr)
+        '''
+
 
         arr = PoseArray()
         arr.header = data.header
         arr.poses = self.listOfPoints
-        self.trash_points_publisher.publish(arr)
+        self.trash_detections_publisher.publish(arr)
 
+        
         avg_arr = PoseArray()
         avg_arr.header = data.header
         avg_arr.poses = self.avgTrashPoses
         self.trash_avg_points_publisher.publish(avg_arr)
-	print('Points: %s' % self.listOfPoints)
+	#print('Points: %s' % self.listOfPoints)
         print('Avg Points: %s' % self.avgTrashPoses)
-    
+        
+
     def aggregatePoints(self, points):
         x = 0
         y = 1
@@ -58,23 +68,37 @@ class AntiCluster:
 
         return points
 
-    def aggregatePointsAvg(self, pose : Pose):
 
-        for poseTuple in self.avgTrashPosesTuple:
+    
+    def aggregatePoseAvg(self, pose):
+	
+        if len(self.avgTrashPosesTuple) is 0 :
+            #print('inside empty')
+            self.avgTrashPosesTuple.append([pose, 1])
+            self.avgTrashPoses.append(pose)
+	else:
+            editedPose = False
+            for poseTuple in self.avgTrashPosesTuple:
             
-            xRangeTop = poseTuple[0].position.x + self._XLENGTH_
-            yRangeTop = poseTuple[0].position.y + self._YLENGTH_
-            xRangeBottom = poseTuple[0].position.x - self._XLENGTH_
-            yRangeBottom = poseTuple[0].position.y - self._YLENGTH_
-            if xRangeBottom <= pose.position.x <= xRangeTop and yRangeBottom <= pose.position.y <= yRangeTop:
-               
-                poseTuple[0].position.x = ((poseTuple[0].position.x * poseTuple[1]) + pose.position.x)/ (poseTuple[1] + 1)
-                poseTuple[0].position.y = ((poseTuple[0].position.y * poseTuple[1]) + pose.position.y)/ (poseTuple[1] + 1)
-                poseTuple[1] += 1
-            else:
-               self.avgTrashPosesTuple.push(pose)
-               self.avgTrashPoses.push(pose)
+                xRangeTop = poseTuple[0].position.x + self._XLENGTH_
+                yRangeTop = poseTuple[0].position.y + self._YLENGTH_
+                xRangeBottom = poseTuple[0].position.x - self._XLENGTH_
+                yRangeBottom = poseTuple[0].position.y - self._YLENGTH_
 
+                if xRangeBottom <= pose.position.x <= xRangeTop and yRangeBottom <= pose.position.y <= yRangeTop:
+               
+                    poseTuple[0].position.x = ((poseTuple[0].position.x * poseTuple[1]) + pose.position.x)/ (poseTuple[1] + 1.0)
+                    poseTuple[0].position.y = ((poseTuple[0].position.y * poseTuple[1]) + pose.position.y)/ (poseTuple[1] + 1.0)
+                    poseTuple[1] += 1
+
+                    editedPose = True
+                    break
+            
+            if not editedPose:
+                self.avgTrashPosesTuple.append([pose, 1])
+                self.avgTrashPoses.append(pose)
+
+    
 
 if __name__ == "__main__":
     '''
