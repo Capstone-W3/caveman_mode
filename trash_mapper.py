@@ -27,6 +27,9 @@ class TrashMapper():
         # publisher that publishes trash poses in the world when we detect one
         self.trash_point_publisher = rospy.Publisher('/trash_mapper/trash_points', PoseStamped, queue_size=1)
         
+	    # publisher that publishes the point we are calculating the mapped point from
+        self.mapped_pose_publisher = rospy.Publisher('/trash_mapper/mapped_pose', PoseStamped, queue_size=1)
+
         # how confident do we need to be
         self.confidence_threshold = 0.95
 
@@ -38,10 +41,10 @@ class TrashMapper():
         self.path = []
 
         # parameters that will determine window of mapping
-        self.min_x = 40
-        self.max_x = 600
-        self.min_y = 30
-        self.max_y = 450
+        self.min_x = 10
+        self.max_x = 630
+        self.min_y = 10
+        self.max_y = 470
         self.max_distance = 3
         # points will have to fall within these parameters for the mapper to publish
         # the point
@@ -110,9 +113,10 @@ class TrashMapper():
         smallest_difference = None
         closest_header = None
         orb_stamp = None
-
+        
         # get the pose closest to the yolo timestamp in the path vector that we
         # store from ORBSLAMMYBOI
+        
         for pose_stamped in self.path:
 
             orb_stamp = pose_stamped.header.stamp
@@ -131,7 +135,14 @@ class TrashMapper():
                     closest_pose = pose_stamped.pose
                     closest_header = pose_stamped.header
                     smallest_difference = time_difference
-
+        
+        '''
+        closest_pose_stamped = self.path[len(self.path) - 25]
+        closest_pose = closest_pose_stamped.pose
+        closest_header = closest_pose_stamped.header
+        closest_stamp = closest_header.stamp
+        orb_stamp = closest_header.stamp
+        '''
         '''
         print('#########################################################')
         print('YOLO_STAMP: %s ORB_STAMP: %s' % (yolo_stamp, orb_stamp))
@@ -196,15 +207,30 @@ class TrashMapper():
             trash_point.pose.position.y = trash_y
             trash_point.header = closest_header
 
-            if (trash_x > self.min_x and trash_x < self.max_x):
-                if (trash_y > self.min_y and trash_y < self.max_y):
+            if (piece.x > self.min_x and piece.x < self.max_x):
+                if (piece.y > self.min_y and piece.y < self.max_y):
                     if (distance_from_base < self.max_distance):
                         self.trash_point_publisher.publish(trash_point)
 
                         print('Trash point Published!')
                         print('YOLO Timestamp: %s' % yolo_stamp)
                         print('Pose Timestamp %s' % orb_stamp)
+
+                        mapped_pose = PoseStamped()
+                        mapped_pose.pose = closest_pose
+                        mapped_pose.header = closest_header
+                        self.mapped_pose_publisher.publish(mapped_pose)
                         return
+                    else:
+                        print('TrashMapper: Trash Too Far Away to map')
+                        print('distance = %f self.max_distance = %f' % (distance_from_base, self.max_distance))
+                else:
+                    print('TrashMapper: Y coordinate out of filter window')
+                    print('Trash Y = %f self.min_y = %f self.max_y = %f' % (piece.y, self.min_y, self.max_y))
+            else:
+                print('TrashMapper: X coordinate out of filter window')
+                print('Trash X = %f self.min_x = %f self.max_x = %f' % (piece.x, self.min_x, self.max_x))
+                return
 
             print('TrashMapper: Point lied out of bounds, not publishing')
 

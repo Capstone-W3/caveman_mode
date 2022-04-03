@@ -35,10 +35,16 @@ class AntiCluster:
         arr.poses = self.listOfPoints
         self.trash_detections_publisher.publish(arr)
 
-        
+        multiDetectionsTuples = filter(lambda poseTuple: poseTuple[1] > 2, self.avgTrashPosesTuple) 
+        multiDetectionPoses = []
+
+        for poseTuple in multiDetectionsTuples:
+            multiDetectionPoses.append(poseTuple[0])
+
         avg_arr = PoseArray()
         avg_arr.header = data.header
-        avg_arr.poses = self.avgTrashPoses
+#        avg_arr.poses = self.avgTrashPoses
+        avg_arr.poses = multiDetectionPoses
         self.trash_avg_points_publisher.publish(avg_arr)
 	#print('Points: %s' % self.listOfPoints)
         print('Avg Points: %s' % self.avgTrashPoses)
