@@ -2,6 +2,8 @@
 # a frame
 
 import math
+import rospy
+from geometry_msgs.msg import *
 
 # frame_width is the width of the frame used by YOLO
 
@@ -117,7 +119,121 @@ def within_plus_or_minus(val, target, margin):
 def distance_between_points(x1, y1, x2, y2):
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
-if __name__ == '__main__':
-    print('Simulating a trash found at pixel_x = 400 1m away, reference_z = 0')
-    print('Angle relative to world and distance from base: %s' % find_destination_z(400, 0.00, 1.00))
+
+# returns a pose `distance away` and between start_pose and destination_pose,
+# with the angle of the returned pose pointing towards the destination point
+def get_goal_pose(start_pose, destination_pose, distance_from_goal):
+    start_x = start_pose.position.x
+    start_y = start_pose.position.y
+
+    dest_x = destination_pose.position.x
+    dest_y = destination_pose.position.y
+
+    # angle between the line formed by these two points and the x axis
+    theta_radians = math.atan((dest_y - start_y) / (dest_x - start_x))
     
+    # normalize this to the unit sphere by dividing pi
+    theta_quat = theta_radians / math.pi
+
+    # distance between the two points
+    distance = distance_between_points(start_x, start_y, dest_x, dest_y)
+
+    destination_pose = Pose()
+    destination_pose.orientation.z = theta_quat
+    
+    distance_to_go = 0
+
+    if distance > distance_from_goal:
+        distance_to_go = distance - distance_from_goal
+
+    near_x = start_x + (distance_to_go * math.cos(theta_radians))
+    near_y = start_y + (distance_to_go * math.sin(theta_radians))
+
+    destination_pose.position.x = near_x
+    destination_pose.position.y = near_y
+    
+    return destination_pose
+
+def distance_between_poses(pose1, pose2):
+    x_1 = pose1.position.x
+    y_1 = pose1.position.y
+
+    x_2 = pose2.position.x
+    y_2 = pose2.position.y
+
+    return distance_between_points(x_1, y_1, x_2, y_2)
+
+
+# returns the closest pose to `pose` in the `pose_list`, also POPs the closest
+# pose from the list
+def get_closest_pose(pose_list, pose):
+    closest_pose = None
+    closest_index = 0
+    closest_distance = float(99999999.9999)
+
+    # iterate through all the poses and find the closest
+    for i in range(len(pose_list)):
+        distance = distance_between_poses(pose, pose_list[i])
+        
+        if distance < closest_distance:
+            closest_distance = distance
+            closest_pose = pose_list[i]
+            closest_index = i
+
+    if len(pose_list) > 0:
+        pose_list.pop(closest_index)
+
+    return closest_pose
+
+if __name__ == '__main__':
+    #print('Simulating a trash found at pixel_x = 400 1m away, reference_z = 0')
+    #print('Angle relative to world and distance from base: %s' % find_destination_z(400, 0.00, 1.00))
+    start_pose = Pose()
+    dest_pose = Pose()
+
+    start_pose.position.x = 0
+    start_pose.position.y = 0
+    start_pose.orientation.z = -0.3
+
+    dest_pose.position.x = 2
+    dest_pose.position.y = 2
+    dest_pose.orientation.z = 0.557
+
+    distance_from_goal = 0.5
+
+    print('Start Pose:')
+    print(start_pose)
+    print('Destination Pose:')
+    print(dest_pose)
+    print('Goal Pose (should be %f m away)' % distance_from_goal)
+    goal_pose = get_goal_pose(start_pose, dest_pose, distance_from_goal)
+    print(goal_pose)
+
+    print('Actual Distance between goal pose and destination pose: %f m' % distance_between_points(goal_pose.position.x, goal_pose.position.y, dest_pose.position.x, dest_pose.position.y))
+
+    test_pose_1 = Pose()
+    test_pose_1.position.x = -1
+    test_pose_1.position.y = -1
+
+    test_pose_2 = Pose()
+    test_pose_2.position.x = 10
+    
+    test_pose_3 = Pose()
+    test_pose_3.position.y = 4
+
+    pose_list = [start_pose, dest_pose, test_pose_2, test_pose_3]
+
+    print('\n\n')
+
+    print('TESTING GETTING CLOSEST POSE:')
+    print('STARTING POSE: %s' % test_pose_1)
+
+    i = 0
+
+    while(len(pose_list) > 0):
+        print('Iteration %i :' % i)
+        #print(pose_list)
+        print('Closest Pose:')
+        print(get_closest_pose(pose_list, test_pose_1))
+        print('\n')
+        i += 1
