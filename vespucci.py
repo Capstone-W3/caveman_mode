@@ -14,7 +14,7 @@ class Vespucci():
         self.goal_sent = False
 
 	# What to do if shut down (e.g. Ctrl-C or failure)
-	rospy.on_shutdown(self.shutdown)
+	rospy.on_shutdown(self.ShutDown)
 	
 	# Tell the action client that we want to spin a thread by default
 	self.move_base = actionlib.SimpleActionClient("move_base", MoveBaseAction)
@@ -46,6 +46,9 @@ class Vespucci():
         # distance to get near a trash point
         self.goal_distance = 0.5
 
+        # are we moving
+        self.started_up = False
+
     def UpdateTrashPoints(self, data):
         self.trash_points = data;
 
@@ -60,7 +63,7 @@ class Vespucci():
         self.goal_sent = True
 	goal = MoveBaseGoal()
         goal.target_pose.pose = pose
-        goal.target_pose.frame_id = 'map'
+        goal.target_pose.header.frame_id = 'map'
         goal.target_pose.header.stamp = rospy.Time.now()
 
 		# Start moving
@@ -92,13 +95,15 @@ class Vespucci():
     def HasPoints(self):
         if self.trash_points_saved == None:
             return len(self.trash_points.poses) > 0
-        else
+        else:
             return len(self.trash_points_saved > 0)
 
     # Navigate "near" the closest trash pose to our current position
     def GoNearClosestPose(self):
         if (self.started_up):
             return
+        else:
+            self.started_up = True
 
         print('Vespucci: Attempting to navigate to nearest trash point')
 
@@ -119,12 +124,15 @@ class Vespucci():
         print()
 
         print('Vespucci: Sending a movement command')
-        self.GoNearPose(closest_pose) 
+        self.GoNearPose(closest_pose)
+
+        self.started_up = False
 
     def ShutDown(self):
         if self.goal_sent:
             self.move_base.cancel_goal()
         rospy.loginfo("Stop")
         rospy.sleep(1)
+        self.started_up = False
 
-if __name__ == '__main__':
+#if __name__ == '__main__':

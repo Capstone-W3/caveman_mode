@@ -16,6 +16,7 @@ class ModeController():
         self.trash_mapper = TrashMapper()
         self.anti_cluster = AntiCluster(1.0,1.0, False)
         self.navigator = Vespucci()
+        print('ModeController: Initialized')
 
     def StartMapper(self):
         print("ModeController: Starting Mapper")
