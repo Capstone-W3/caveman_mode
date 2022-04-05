@@ -3,6 +3,7 @@ from trash_mapper import *
 from anti_cluster import *
 from vespucci import *
 import rospy
+from geometry_msgs.msg import *
 
 # Controls caveman mode modes
 # can only be in one mode at a time
@@ -18,6 +19,10 @@ class ModeController():
         self.navigator = Vespucci()
         print('ModeController: Initialized')
 
+        self.nav_start_pose = None
+
+        self.nav_start_publisher = rospy.Publisher('/initialpose', PoseWithCovarianceStamped, queue_size=1)
+
     def StartMapper(self):
         print("ModeController: Starting Mapper")
         self.trash_bot.ShutDown()
@@ -27,6 +32,16 @@ class ModeController():
         print("ModeController: Stopping Mapper")
         self.trash_mapper.StopListeningToYolo()
         print('Mapped Points (anti-clustered):' % self.anti_cluster.listOfPoints)
+        poses = self.trash_mapper.path
+
+        if len(poses) == 0:
+            return
+
+        pose_stamped = poses[len(poses) - 1]
+
+        self.nav_start_pose = PoseWithCovarianceStamped()
+        self.nav_start_pose.pose.pose = pose_stamped.pose
+        self.nav_start_pose.header = pose_stamped.header
 
     def StartTrashBot(self):
         print("ModeController: Starting TrashBot")
@@ -44,8 +59,18 @@ class ModeController():
         self.trash_bot.ShutDown()
 
     def PickUpTrash(self):
+        print('ModeController: PickUpTrash()')
+        print('Publishing initial pose for Vespucci...')
+        print(self.nav_start_pose)
+
+        if self.nav_start_pose != None:
+            self.nav_start_publisher.publish(self.nav_start_pose)
+        
+        print('Sleeping for 5s to let AMCL catch up...')
+        rospy.sleep(5)
+        
         refresh_rate = 10 #Hz
-        caveman_time_limit = 10 (seconds)
+        caveman_time_limit = 10 # (seconds)
         r = rospy.Rate(refresh_rate)
         dt = 0
 

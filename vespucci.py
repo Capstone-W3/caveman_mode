@@ -99,7 +99,7 @@ class Vespucci():
         if self.trash_points_saved == None:
             return len(self.trash_points.poses) > 0
         else:
-            return len(self.trash_points_saved > 0)
+            return len(self.trash_points_saved) > 0
 
     # Navigate "near" the closest trash pose to our current position
     def GoNearClosestPose(self):
