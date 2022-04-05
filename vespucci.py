@@ -60,6 +60,9 @@ class Vespucci():
         print('Vespucci: GoToPose attempting to go to:')
         print(pose)
 
+        if pose.orientation.w == 0.0:
+            pose.orientation.w = 1.0
+
         self.goal_sent = True
 	goal = MoveBaseGoal()
         goal.target_pose.pose = pose

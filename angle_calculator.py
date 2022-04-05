@@ -130,7 +130,16 @@ def get_goal_pose(start_pose, destination_pose, distance_from_goal):
     dest_y = destination_pose.position.y
 
     # angle between the line formed by these two points and the x axis
-    theta_radians = math.atan((dest_y - start_y) / (dest_x - start_x))
+    theta_radians = math.atan((start_y - dest_y) / (start_x - dest_x))
+    
+    delta_x = dest_x - start_x
+    delta_y = dest_y - start_y
+    
+    if (delta_x < 0):
+        if (delta_y > 0):
+            theta_radians = math.pi + theta_radians
+        elif(delta_y < 0):
+            theta_radians = (-1 * math.pi) + theta_radians
     
     # normalize this to the unit sphere by dividing pi
     theta_quat = theta_radians / math.pi
@@ -138,8 +147,8 @@ def get_goal_pose(start_pose, destination_pose, distance_from_goal):
     # distance between the two points
     distance = distance_between_points(start_x, start_y, dest_x, dest_y)
 
-    destination_pose = Pose()
-    destination_pose.orientation.z = theta_quat
+    goal_pose = Pose()
+    goal_pose.orientation.z = theta_quat
     
     distance_to_go = 0
 
@@ -149,10 +158,35 @@ def get_goal_pose(start_pose, destination_pose, distance_from_goal):
     near_x = start_x + (distance_to_go * math.cos(theta_radians))
     near_y = start_y + (distance_to_go * math.sin(theta_radians))
 
-    destination_pose.position.x = near_x
-    destination_pose.position.y = near_y
+    goal_pose.position.x = near_x
+    goal_pose.position.y = near_y
+
+            
+
+    print('===========get_goal_pose======================')
+
+    print('start_pose:')
+    print(start_pose)
+
+    print('\n\n')
+    print('destination_pose:')
+    print(destination_pose)
+
+
+    print('\n\n')
+
+    print('goal_pose:')
+    print(goal_pose)
+
     
-    return destination_pose
+    print('\n\n')
+    print('Distance between goal pose and destination:')
+    print(distance_between_poses(destination_pose, goal_pose))
+
+    
+    print('==============================================')
+    
+    return goal_pose
 
 def distance_between_poses(pose1, pose2):
     x_1 = pose1.position.x
@@ -186,8 +220,35 @@ def get_closest_pose(pose_list, pose):
     return closest_pose
 
 if __name__ == '__main__':
+
+    origin = Pose()
+    
+    two_two = Pose()
+    two_two.position.x = 2
+    two_two.position.y = 2
+
+    two_neg_two = Pose()
+    two_neg_two.position.x = 2
+    two_neg_two.position.y = -2
+
+    neg_two_two = Pose()
+    neg_two_two.position.x = -2
+    neg_two_two.position.y = 2
+
+    neg_two_neg_two = Pose()
+    neg_two_neg_two.position.x = -2
+    neg_two_neg_two.position.y = -2
+
+    get_goal_pose(origin, two_two, 0.5)
+    get_goal_pose(origin, two_neg_two, 0.5)
+    get_goal_pose(origin, neg_two_two, 0.5)
+    get_goal_pose(origin, neg_two_neg_two, 0.5)
+
+
     #print('Simulating a trash found at pixel_x = 400 1m away, reference_z = 0')
     #print('Angle relative to world and distance from base: %s' % find_destination_z(400, 0.00, 1.00))
+
+    '''
     start_pose = Pose()
     dest_pose = Pose()
 
@@ -237,3 +298,4 @@ if __name__ == '__main__':
         print(get_closest_pose(pose_list, test_pose_1))
         print('\n')
         i += 1
+    '''
