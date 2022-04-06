@@ -78,6 +78,9 @@ class ModeController():
 
         # while there are still points to go to
         while(self.navigator.HasPoints()):
+            # publishthe posearray of the points we need to get
+            self.navigator.PublishPickupPoints()
+
             # go near the closest trash point
             self.navigator.GoNearClosestPose()
 

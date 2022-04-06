@@ -44,16 +44,27 @@ class Vespucci():
         rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, self.UpdatePosition)        
 
         # distance to get near a trash point
-        self.goal_distance = 0.5
+        self.goal_distance = 1.2 # (m)
 
         # are we moving
         self.started_up = False
+
+        self.points_to_travel_publisher = rospy.Publisher('/vespucci/pickup_points', PoseArray, queue_size=1)
 
     def UpdateTrashPoints(self, data):
         self.trash_points = data;
 
     def UpdatePosition(self, data):
         self.current_position = data
+
+    def PublishPickupPoints(self):
+        pose_array = PoseArray()
+        if self.trash_points_saved != None:
+            pose_array.poses = self.trash_points_saved
+            pose_array.header = self.trash_points.header
+        else:
+            pose_array.header.stamp = rospy.Time.now()
+        self.points_to_travel_publisher.publish(pose_array)
 
     def GoToPose(self, pose):
 

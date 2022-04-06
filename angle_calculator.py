@@ -162,7 +162,7 @@ def get_goal_pose(start_pose, destination_pose, distance_from_goal):
     goal_pose.position.y = near_y
 
             
-
+    '''
     print('===========get_goal_pose======================')
 
     print('start_pose:')
@@ -185,7 +185,8 @@ def get_goal_pose(start_pose, destination_pose, distance_from_goal):
 
     
     print('==============================================')
-    
+    '''
+
     return goal_pose
 
 def distance_between_poses(pose1, pose2):
