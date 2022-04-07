@@ -141,7 +141,49 @@ class Vespucci():
         self.GoNearPose(closest_pose)
 
         self.started_up = False
+	
+    def GetFullShortestPath(self):
+        if (self.started_up):
+            return
+        else:
+            self.started_up = True
 
+        print('Vespucci: Attempting to navigate to nearest trash point')
+
+        if self.trash_points_saved == None:
+            self.trash_points_saved = self.trash_points.poses
+        elif self.trash_points_saved == []:
+            print('No points left')
+            return
+
+        current_pose = self.current_position.pose.pose
+        print('Vespucci: Current Position:')
+        print(current_pose)
+        
+	
+	heuristicTrashPairs = {} # create a dictionary of the distance between each pair of trash points
+        for path in itertools.permutations(self.trash_points_saved, r=2):
+            heuristicTrashPairs[(path[0], path[1])] = distance_between_poses(path[0], path[1])
+	
+	# This will be a pretty good heuristic as long as we only have a couple of trash points
+	# It needs to actually check each permutation though so a path of 13 pieces of trash would need 6,227,020,800 iterations
+	minCostToAllTrash = 999999
+	currentBestPath = []
+	for path in itertools.permutations(self.trash_points_saved):
+
+	    costToFirst = distance_between_poses(current_pose, path[0])
+	    costForRest = sum( distance_between_poses(path[i], path[i+1]) for i in range(len(path)-1))
+	    pathCost = costToFirst+costForRest
+
+	    if pathCost < minCostToCorners: 
+	        minCostToCorners = pathCost
+		currentBestPath = path
+
+	return currentBestPath
+
+
+	
+	
     def ShutDown(self):
         if self.goal_sent:
             self.move_base.cancel_goal()
