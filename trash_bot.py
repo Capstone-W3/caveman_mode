@@ -25,7 +25,7 @@ class TrashBot():
         # note: angular velocity direction is positive => counter clockwise
         self.angular_speed = 0.3 # radians/s
         
-        self.confidence_threshold = 0.8
+        self.confidence_threshold = 0.90
         self.locked_on = threading.Lock()
 	
         self.depth_camera = RealsenseSubscriber()
@@ -74,21 +74,25 @@ class TrashBot():
 
         # if we aren't confident, stop the turtlebot and do nothing
         if closest_piece.confidence < self.confidence_threshold:
-            self.kobuki_base.stop()
+            #self.kobuki_base.stop()
             print('TrashBot: Unconfident, not moving')
             return
-
+        
+        print('TrashBot: telling bot to stop spinning') 
+	self.kobuki_base.stop_spinning()
         print("TrashBot: Detected Trash!")
 
         # If we aren't locked on, acquire the lock so two trash pieces aren't
         # locked onto simultaneously
         if not self.locked_on.locked():
             self.locked_on.acquire()
+            print('TrashBot: Acquired lock!')
         else:
+            print('TrashBot: Lock in use, returning')
             return
 
         # tell image_controller to stop republishing and also stop listening to
-        # any further images received from yolo is there is a backlog
+        # any further images received from yolo if there is a backlog
         self.StopListeningToYolo()
  
         print('TrashBot: Closest piece is at (%i, %i)' % (closest_piece.x, closest_piece.y))
@@ -152,6 +156,8 @@ class TrashBot():
         
         print('TrashBot: Attempting to turn to destination angle %f' % destination_angle)
 
+        self.kobuki_base.stop()
+
         self.kobuki_base.turn_to_angle(destination_angle)
 
         print('TrashBot: Starting the Collection Mechanism')
@@ -172,6 +178,17 @@ class TrashBot():
         self.locked_on.release() 
         print('TrashBot: Locked off')
 
+    # Spins until it locks onto a piece of trash
+    # direction = True => counterclockwise
+    # direction = False => clockwise
+    def ScanUntilTrashFound(self, direction = True):
+        if direction:
+            self.kobuki_base.spin_endlessly(0.3, 60)
+        else:
+            self.kobuki_base.spin_endlessly(-0.3, 60)
+        while self.kobuki_base.spinning:
+            continue
+
     # sends a message to image_controller to start feeding yolo data
     # also sets self.respond_to_trash to true
     def StartListeningToYolo(self): 
@@ -185,13 +202,14 @@ class TrashBot():
     def StopListeningToYolo(self): 
         active_message = Bool()
         active_message.data = False
-        self.active_publisher.publish(active_message)
+        #self.active_publisher.publish(active_message)
         self.respond_to_trash = False
 
     # Start up the bot and start listening to YOLO
-    def StartUp(self):
+    def StartUp(self, direction = True):
         self.running = True
         self.StartListeningToYolo()
+        self.ScanUntilTrashFound(direction)
         print('TrashBot: StartUp()')
 
     # Stop the trash bot and stop listening to any inputs

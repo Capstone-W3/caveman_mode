@@ -44,7 +44,7 @@ class Vespucci():
         rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, self.UpdatePosition)        
 
         # distance to get near a trash point
-        self.goal_distance = 1.2 # (m)
+        self.goal_distance = 1.5 # (m)
 
         # are we moving
         self.started_up = False
@@ -64,6 +64,7 @@ class Vespucci():
             pose_array.header = self.trash_points.header
         else:
             pose_array.header.stamp = rospy.Time.now()
+        pose_array.header.frame_id = 'map'
         self.points_to_travel_publisher.publish(pose_array)
 
     def GoToPose(self, pose):
@@ -115,7 +116,7 @@ class Vespucci():
     # Navigate "near" the closest trash pose to our current position
     def GoNearClosestPose(self):
         if (self.started_up):
-            return
+            return Pose()
         else:
             self.started_up = True
 
@@ -125,7 +126,7 @@ class Vespucci():
             self.trash_points_saved = self.trash_points.poses
         elif self.trash_points_saved == []:
             print('No points left')
-            return
+            return Pose()
 
         current_pose = self.current_position.pose.pose
         print('Vespucci: Current Position:')
@@ -141,6 +142,7 @@ class Vespucci():
         self.GoNearPose(closest_pose)
 
         self.started_up = False
+	return closest_pose
 	
     def GetFullShortestPath(self):
         if (self.started_up):

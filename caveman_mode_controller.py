@@ -43,10 +43,10 @@ class ModeController():
         self.nav_start_pose.pose.pose = pose_stamped.pose
         self.nav_start_pose.header = pose_stamped.header
 
-    def StartTrashBot(self):
+    def StartTrashBot(self, direction):
         print("ModeController: Starting TrashBot")
         self.trash_mapper.StopListeningToYolo()
-        self.trash_bot.StartUp()
+        self.trash_bot.StartUp(direction)
 
     def StopTrashBot(self):
         print("ModeController: Stopping TrashBot")
@@ -81,12 +81,66 @@ class ModeController():
             # publishthe posearray of the points we need to get
             self.navigator.PublishPickupPoints()
 
-            # go near the closest trash point
-            self.navigator.GoNearClosestPose()
+            # go near the closest trash point and return where that trash point is
+            trash_pose = self.navigator.GoNearClosestPose()
+
+            curr_pose = self.navigator.current_position.pose.pose
+
+            start_x = curr_pose.position.x
+            start_y = curr_pose.position.y
+
+            dest_x = trash_pose.position.x
+            dest_y = trash_pose.position.y
+    
+            # RADIANS
+            theta_trash = math.atan((start_y - dest_y) / (start_x - dest_x))
+            
+            delta_x = dest_x - start_x
+            delta_y = dest_y - start_y
+            
+            if (delta_x < 0):
+                if (delta_y > 0):
+                    theta_trash = math.pi + theta_trash
+                elif(delta_y < 0):
+                    theta_trash = (-1 * math.pi) + theta_trash
+
+            # convert radians to unit sphere
+            theta_trash = theta_trash / math.pi
+            
+            sub = theta_trash - curr_pose.orientation.z
+
+            curr_z = theta_trash
+            destination_z = curr_pose.orientation.z
+
+            # These variables track if we need to overlap over the -1/1 angle boundary
+            # in the course of our turn on on the shortest path
+            overlap_cw = False
+            overlap_ccw = False
+
+            # if the start and destination are in quadrants 2 and 3
+            if (curr_z > 0.5) and (destination_z < -0.5):
+                # move COUNTER CLOCKWISE
+                overlap_ccw = True
+            elif (curr_z < -0.5) and (destination_z > 0.5):
+                # move CLOCKWISE
+                overlap_cw = True
+            else:
+                overlap_cw = False
+                overlap_ccw = False
+
+            direction = False
+
+
+            if overlap_ccw:
+                direction = True
+            elif overlap_cw:
+                direction = False
+            elif sub > 0:
+                direction = True          
 
             # start up the TrashBot
             dt = 0
-            self.StartTrashBot()
+            self.StartTrashBot(direction)
 
             # while the bot is running and time elapsed hasnt breached our limit,
             # wait
@@ -95,6 +149,7 @@ class ModeController():
             # just observe the time limit and manually shut trashbot down
             while(self.trash_bot.running and dt < caveman_time_limit):
                 dt += 1.0/float(refresh_rate)
+                print('dt: %f' % dt)
                 r.sleep()
 
             if dt >= caveman_time_limit:

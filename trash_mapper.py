@@ -109,7 +109,7 @@ class TrashMapper():
         '''
 
         closest_pose = None
-        closest_stamp = None
+        orb_closest_stamp = None
         smallest_difference = None
         closest_header = None
         orb_stamp = None
@@ -123,18 +123,23 @@ class TrashMapper():
             
             time_difference = abs(yolo_stamp - orb_stamp)
 
-            if closest_stamp == None:
-                closest_stamp = orb_stamp
+            # print('orb_stamp: %s , time_difference = %s' % (orb_stamp, time_difference.to_sec()))
+
+            if orb_closest_stamp == None:
+                orb_closest_stamp = orb_stamp
                 closest_pose = pose_stamped.pose
                 closest_header = pose_stamped.header
                 smallest_difference = time_difference
                 continue
             else:
                 if time_difference < smallest_difference:
-                    closest_stamp = orb_stamp
+                    orb_closest_stamp = orb_stamp
                     closest_pose = pose_stamped.pose
                     closest_header = pose_stamped.header
                     smallest_difference = time_difference
+
+        print('YoLO stamp: %s' % (yolo_stamp))
+        print('orb_closest_stamp: %s, smallest_difference: %s' % (orb_closest_stamp, smallest_difference.to_sec()))
         
         '''
         closest_pose_stamped = self.path[len(self.path) - 25]
@@ -213,8 +218,9 @@ class TrashMapper():
                         self.trash_point_publisher.publish(trash_point)
 
                         print('Trash point Published!')
-                        print('YOLO Timestamp: %s' % yolo_stamp)
-                        print('Pose Timestamp %s' % orb_stamp)
+                        print('YOLO Timestamp: %s' % yolo_stamp.to_sec())
+                        print('Depth Timestamp %s' % closest_stamp.to_sec())
+                        print('Orbslam Timestamp %s' % orb_closest_stamp.to_sec())
 
                         mapped_pose = PoseStamped()
                         mapped_pose.pose = closest_pose

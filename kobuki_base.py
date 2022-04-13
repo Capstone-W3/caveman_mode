@@ -67,6 +67,9 @@ class KobukiBase():
         # time to stop moving if we haven't reached destination (seconds)
         self.movement_timeout = 5
 
+        # are we spinning?
+        self.spinning = False
+
     def OdometryDataReceivedEvent(self, data):
         self.pose_with_covariance = data.pose
         # print(self.pose_with_covariance.pose)
@@ -107,10 +110,14 @@ class KobukiBase():
                 self.cmd_vel.publish(turn_cmd)
                 r.sleep()
                 time_run += (1.0 / float(polling_rate))
-
-            print('timeout, stopping spinning')
-            self.stop()
-            self.moving = False
+            
+            if time_run >= timeout:
+                print('timeout, stopping spinning')
+            else:
+                print('someone told me to stop spinning')
+            
+            #self.stop()
+            #self.moving = False
 
         if not (self.moving):
             spin_thread = threading.Thread(target = spin, args=(speed,))
@@ -119,12 +126,49 @@ class KobukiBase():
         else:
             print('already moving, can\'t spin more')
 
+    def spin_endlessly(self, speed = 0.4, timeout = 10):
+        def spin(speed):
+            print('attempting to spin asyncrounously')
+            
+            polling_rate = 5 #Hz
+            r = rospy.Rate(polling_rate)
+            
+            turn_cmd = Twist()
+            turn_cmd.angular.z = speed
+            time_run = 0
+
+            while self.spinning and time_run < timeout:
+                print('spin spin around')
+                self.cmd_vel.publish(turn_cmd)
+                r.sleep()
+                time_run += (1.0 / float(polling_rate))
+            
+            if time_run >= timeout:
+                print('timeout, stopping spinning')
+            else:
+                print('someone told me to stop spinning')
+            
+            #self.stop()
+            #self.moving = False
+
+        if self.spinning:
+            print('already spinning')            
+            return
+        else:
+            self.spinning = True
+            print('not already spinning, starting spinning thread')
+            spin_thread = threading.Thread(target = spin, args=(speed,))
+            spin_thread.start()
+        
+
+    def stop_spinning(self):
+        self.spinning = False
+
 
     def turn_to_angle(self, destination_z):
+	self.stop_spinning()
         start_z = self.pose_with_covariance.pose.orientation.z
         print('turn_to_angle start_z: %f destination_z: %f' % (start_z, destination_z))
-
-
 
         if (self.moving):
             return
@@ -198,6 +242,7 @@ class KobukiBase():
         
 
     def stop(self):
+	self.stop_spinning()
         # print('attempting to stop with KobukiBase.stop()')
         stop_cmd = Twist()
         self.moving = False

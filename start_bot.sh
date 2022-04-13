@@ -1,2 +1,2 @@
-source ~/darknet_v4_workspace/devel/setup.bash
+source ~/trash_grandparent_repo/catkin_ws/devel/setup.bash
 roslaunch trash_bot.launch

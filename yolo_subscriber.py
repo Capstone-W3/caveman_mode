@@ -46,7 +46,7 @@ class TrashYoloSubscriber():
 
         # Add all trash to the list of currently spotted trash
         for bounding_box in data.bounding_boxes:
-            self.trash.append(TrashPiece(bounding_box, data.header))
+            self.trash.append(TrashPiece(bounding_box, data.image_header))
 
         # print('trash count: %i' % len(self.trash))
 
